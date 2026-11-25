@@ -1,0 +1,131 @@
+# =====================================================================
+#  Pacote de teste CDSP para o Espanso
+#  Os textos abaixo são EXEMPLOS e servem só para testar as funções.
+#  Substitua pelos textos institucionais reais antes do uso.
+#
+#  Atalhos:
+#    /cont    texto fixo
+#    /hoje    data de hoje por extenso
+#    /prazo   data daqui a 15 dias
+#    /qualif  formulário (nome, CNJ, medicamento, observações) + data
+#    /prelim  menu de escolha que insere o parágrafo correspondente
+#    /fmt     texto formatado (negrito, itálico, lista) para o Google Docs
+#
+#  Observação: nenhum atalho pode ser o começo de outro (por exemplo,
+#  /cont e /contestacao), porque o mais curto dispara primeiro.
+# =====================================================================
+
+matches:
+
+  # -------------------------------------------------------------------
+  # 1. Atalho simples que expande em texto
+  # -------------------------------------------------------------------
+  - trigger: "/cont"
+    replace: |-
+      Trata-se de ação de obrigação de fazer ajuizada em face do ESTADO DE MATO GROSSO, na qual a parte autora pleiteia o fornecimento de tratamento de saúde. [TEXTO DE EXEMPLO]
+
+  # -------------------------------------------------------------------
+  # 2. Data automática
+  # -------------------------------------------------------------------
+  - trigger: "/hoje"
+    replace: "Cuiabá-MT, {{data}}."
+    vars:
+      - name: data
+        type: date
+        params:
+          format: "%-d de %B de %Y"
+          locale: "pt-BR"
+
+  # Data com deslocamento (offset em segundos: 15 dias = 1296000)
+  - trigger: "/prazo"
+    replace: "{{data}}"
+    vars:
+      - name: data
+        type: date
+        params:
+          format: "%d/%m/%Y"
+          offset: 1296000
+
+  # -------------------------------------------------------------------
+  # 3. Formulário pop-up com campos, menu suspenso e texto longo
+  # -------------------------------------------------------------------
+  - trigger: "/qualif"
+    replace: |-
+      Processo n. {{form1.cnj}}
+      Parte autora: {{form1.nome}}
+      Objeto: fornecimento de {{form1.medicamento}}.
+
+      {{form1.obs}}
+
+      Cuiabá-MT, {{data}}.
+    vars:
+      - name: data
+        type: date
+        params:
+          format: "%-d de %B de %Y"
+          locale: "pt-BR"
+      - name: form1
+        type: form
+        params:
+          layout: |
+            Nome da parte autora: [[nome]]
+            Número CNJ: [[cnj]]
+            Medicamento: [[medicamento]]
+            Observações: [[obs]]
+          fields:
+            cnj:
+              default: "0000000-00.0000.8.11.0000"
+            medicamento:
+              type: choice
+              values:
+                - "medicamento incorporado ao SUS"
+                - "medicamento não incorporado ao SUS"
+                - "medicamento sem registro na ANVISA"
+                - "insumo / produto para saúde"
+            obs:
+              multiline: true
+
+  # -------------------------------------------------------------------
+  # 4. "Condicional": a opção escolhida decide qual parágrafo entra.
+  #    O usuário vê o rótulo curto (label) e o texto inserido é o id.
+  # -------------------------------------------------------------------
+  - trigger: "/prelim"
+    replace: "{{paragrafo}}"
+    vars:
+      - name: paragrafo
+        type: choice
+        params:
+          values:
+            - label: "Incompetência da Justiça Estadual"
+              id: "PRELIMINAR - INCOMPETÊNCIA. [Parágrafo de exemplo sobre a competência para processar o pedido.]"
+            - label: "Incompetência do Juizado Especial"
+              id: "PRELIMINAR - INCOMPETÊNCIA DO JUIZADO. [Parágrafo de exemplo sobre a complexidade da causa ou o valor de alçada.]"
+            - label: "Ausência de interesse de agir"
+              id: "PRELIMINAR - AUSÊNCIA DE INTERESSE DE AGIR. [Parágrafo de exemplo sobre a falta de requerimento administrativo prévio.]"
+            - label: "Nenhuma preliminar"
+              id: ""
+
+  # -------------------------------------------------------------------
+  # 5. Texto formatado (HTML) para colar no Google Docs, com campos
+  # -------------------------------------------------------------------
+  - trigger: "/fmt"
+    html: >-
+      <p><b>DOS PEDIDOS</b></p>
+      <p>Diante do exposto, o <b>ESTADO DE MATO GROSSO</b> requer:</p>
+      <ol>
+      <li>o acolhimento da preliminar arguida;</li>
+      <li>no mérito, a <i>improcedência</i> dos pedidos formulados por <b>{{form1.nome}}</b>;</li>
+      <li>a produção de todas as provas admitidas em direito.</li>
+      </ol>
+      <p>Cuiabá-MT, {{data}}.</p>
+      <p>[TEXTO DE EXEMPLO]</p>
+    vars:
+      - name: data
+        type: date
+        params:
+          format: "%-d de %B de %Y"
+          locale: "pt-BR"
+      - name: form1
+        type: form
+        params:
+          layout: "Nome da parte autora: [[nome]]"
