@@ -3,6 +3,7 @@
 // Processo principal do TextCDSP: ícone na bandeja controlando o motor (Espanso portable),
 // sincronizando os snippets oficiais da pasta compartilhada e abrindo a janela de configurações.
 
+const fs = require('node:fs');
 const path = require('node:path');
 const { app, dialog, shell, Notification } = require('electron');
 const { criarCaminhos } = require('./caminhos');
@@ -16,6 +17,7 @@ const { criarJanelaBiblioteca } = require('./janelaBiblioteca');
 const { textoStatusSync } = require('../shared/statusSync');
 
 const INTERVALO_VIGIA_MS = 30 * 1000;
+const NOME_DA_ENTRADA_DE_INICIO = 'TextCDSP';
 
 // Os dados ficam em %APPDATA%\TextCDSP, também em desenvolvimento (sem isso viraria %APPDATA%\textcdsp).
 app.setPath('userData', path.join(app.getPath('appData'), 'TextCDSP'));
@@ -108,7 +110,8 @@ function iniciarAplicativo() {
 
   function aplicarInicioComWindows() {
     if (app.isPackaged) {
-      app.setLoginItemSettings({ openAtLogin: Boolean(configuracao.iniciarComWindows) });
+      // O nome fixo é o da entrada no registro do Windows; o desinstalador remove exatamente essa (build/installer.nsh).
+      app.setLoginItemSettings({ openAtLogin: Boolean(configuracao.iniciarComWindows), name: NOME_DA_ENTRADA_DE_INICIO });
     } else {
       // Em desenvolvimento isso registraria o electron.exe avulso para abrir com o Windows.
       log.info('Início com o Windows ignorado em desenvolvimento');
@@ -236,6 +239,35 @@ function iniciarAplicativo() {
     }
   }
 
+  // Versão do Espanso em uso (a da pasta engine\; se ainda não existir, a que acompanha o app).
+  function versaoDoEspanso() {
+    for (const arquivo of [caminhos.engineVersao, caminhos.origemVersao]) {
+      try {
+        const texto = fs.readFileSync(arquivo, 'utf8').trim();
+        if (texto) return texto;
+      } catch {
+        // tenta o próximo
+      }
+    }
+    return 'desconhecida';
+  }
+
+  async function mostrarSobre() {
+    const escolha = await dialog.showMessageBox({
+      type: 'info',
+      title: 'Sobre o TextCDSP',
+      message: `TextCDSP ${app.getVersion()}`,
+      detail:
+        `Motor de expansão: Espanso ${versaoDoEspanso()}, usado sem modificações (licença GPL-3).\n\n` +
+        'O TextCDSP usa programas de terceiros. Os avisos de licença e o endereço do código-fonte do Espanso estão no arquivo de avisos.',
+      buttons: ['Abrir avisos de licença', 'Fechar'],
+      defaultId: 1,
+      cancelId: 1,
+      noLink: true,
+    });
+    if (escolha.response === 0) await abrir(caminhos.avisos, 'o arquivo de avisos de licença');
+  }
+
   // Verifica o motor a cada 30 s. Se caiu, tenta reiniciar uma vez; se não voltar, fica em "erro".
   async function vigiar() {
     if (ocupado || encerrando || estado === 'pausado' || estado === 'iniciando' || bloqueadoPorOutroEspanso) return;
@@ -291,6 +323,7 @@ function iniciarAplicativo() {
       aoAbrirConfiguracoes: () => janelaConfig.abrir(),
       aoAbrirPessoais: () => abrir(caminhos.pessoalYml, 'o arquivo de atalhos pessoais'),
       aoAbrirLogs: () => abrir(caminhos.logs, 'a pasta de logs'),
+      aoAbrirSobre: () => mostrarSobre().catch((erro) => log.erro('Falha ao mostrar o Sobre', erro)),
       aoSair: () => app.quit(),
     });
     bandeja.atualizarSync(textoStatusSync(sincronizador.estadoAtual()));

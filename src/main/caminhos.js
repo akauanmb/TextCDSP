@@ -67,6 +67,8 @@ function criarCaminhos({ empacotado, resourcesPath, appPath, userData }) {
     icone: path.join(appPath, 'assets', 'icone.ico'),
     paginaConfiguracoes: path.join(appPath, 'src', 'renderer', 'configuracoes', 'index.html'),
     preloadConfiguracoes: path.join(appPath, 'src', 'preload', 'configuracoes.js'),
+    // Avisos de licença de terceiros (Espanso, GPL-3). Instalado: fora do app.asar, para abrir no Bloco de Notas.
+    avisos: empacotado ? path.join(resourcesPath, 'THIRD_PARTY_NOTICES.txt') : path.join(appPath, 'THIRD_PARTY_NOTICES.txt'),
     paginaBiblioteca: path.join(appPath, 'src', 'renderer', 'biblioteca', 'index.html'),
     preloadBiblioteca: path.join(appPath, 'src', 'preload', 'biblioteca.js'),
   };

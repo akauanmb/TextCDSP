@@ -1,19 +1,69 @@
 {
   "name": "textcdsp",
+  "productName": "TextCDSP",
   "version": "0.1.0",
   "private": true,
   "description": "Expansor de texto da CDSP para Windows (Espanso portable + Electron).",
+  "author": "CDSP/PGE-MT",
   "main": "src/main/index.js",
   "scripts": {
     "start": "electron .",
     "test": "node --test",
     "validar": "node scripts/validar.js",
-    "baixar-espanso": "node scripts/baixar-espanso.js"
+    "baixar-espanso": "node scripts/baixar-espanso.js",
+    "dist": "node scripts/baixar-espanso.js && electron-builder --win nsis"
   },
   "dependencies": {
     "yaml": "^2.9.1"
   },
   "devDependencies": {
-    "electron": "^45.5.0"
+    "electron": "^45.5.0",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "textcdsp.cdsp",
+    "productName": "TextCDSP",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json",
+      "snippets/exemplos.yml"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/espanso",
+        "to": "espanso"
+      },
+      {
+        "from": "THIRD_PARTY_NOTICES.txt",
+        "to": "THIRD_PARTY_NOTICES.txt"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icone.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": false,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "TextCDSP-Setup-${version}.exe",
+      "include": "build/installer.nsh"
+    }
   }
 }

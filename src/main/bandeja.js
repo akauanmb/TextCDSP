@@ -4,7 +4,7 @@
 
 const { Tray, Menu, nativeImage } = require('electron');
 
-function criarBandeja({ icone, aoAlternar, aoAtualizarSnippets, aoAbrirBiblioteca, aoAbrirConfiguracoes, aoAbrirPessoais, aoAbrirLogs, aoSair, log }) {
+function criarBandeja({ icone, aoAlternar, aoAtualizarSnippets, aoAbrirBiblioteca, aoAbrirConfiguracoes, aoAbrirPessoais, aoAbrirLogs, aoAbrirSobre, aoSair, log }) {
   const imagem = nativeImage.createFromPath(icone);
   if (imagem.isEmpty()) log.aviso(`Não foi possível carregar o ícone da bandeja em ${icone}`);
   const tray = new Tray(imagem);
@@ -23,6 +23,7 @@ function criarBandeja({ icone, aoAlternar, aoAtualizarSnippets, aoAbrirBibliotec
       { label: 'Configurações...', click: aoAbrirConfiguracoes },
       { label: 'Abrir meus snippets pessoais', click: aoAbrirPessoais },
       { label: 'Abrir pasta de logs', click: aoAbrirLogs },
+      { label: 'Sobre o TextCDSP', click: aoAbrirSobre },
       { type: 'separator' },
       { label: 'Sair', click: aoSair },
     ]);
