@@ -336,8 +336,8 @@ Set-Content "$T\.espanso\config\default.yml" "show_icon: false`nshow_notificatio
 # sem este arquivo, o motor cria um base.yml com os exemplos do Espanso, inclusive o :shell (P1)
 Set-Content -Encoding utf8 "$T\.espanso\match\base.yml" "# reservado`nmatches: []"
 
-# 2) snippets de teste (nesta etapa o arquivo ainda está em espanso\cdsp.yml)
-Copy-Item espanso\cdsp.yml "$T\.espanso\match\cdsp.yml"
+# 2) snippets de teste
+Copy-Item snippets\exemplos.yml "$T\.espanso\match\exemplos.yml"
 
 # 3) evita o travamento da primeira execução (P3, atenção 2)
 New-Item -ItemType Directory "$T\.espanso-runtime\kvs" -Force | Out-Null
@@ -357,4 +357,4 @@ Start-Process "$T\espansod.exe" -ArgumentList 'launcher' -WorkingDirectory $T -W
 Remove-Item -Recurse -Force $T
 ```
 
-Depois de iniciar, abra o Google Docs e teste os seis atalhos do `espanso\LEIAME.md` (`/cont`, `/hoje`, `/prazo`, `/qualif`, `/prelim`, `/fmt`). Se houver um Espanso instalado e rodando, o do teste não inicia (P4).
+Depois de iniciar, abra o Google Docs e teste os seis atalhos do `docs\TESTE-MANUAL.md` (`/cont`, `/hoje`, `/prazo`, `/qualif`, `/prelim`, `/fmt`). Se houver um Espanso instalado e rodando, o do teste não inicia (P4).

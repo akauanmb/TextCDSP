@@ -5,6 +5,10 @@
   "description": "Expansor de texto da CDSP para Windows (Espanso portable + Electron).",
   "scripts": {
     "test": "node --test",
+    "validar": "node scripts/validar.js",
     "baixar-espanso": "node scripts/baixar-espanso.js"
+  },
+  "dependencies": {
+    "yaml": "^2.9.1"
   }
 }

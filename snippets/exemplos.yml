@@ -21,6 +21,7 @@ matches:
   # 1. Atalho simples que expande em texto
   # -------------------------------------------------------------------
   - trigger: "/cont"
+    label: "Texto fixo: abertura da contestação"
     replace: |-
       Trata-se de ação de obrigação de fazer ajuizada em face do ESTADO DE MATO GROSSO, na qual a parte autora pleiteia o fornecimento de tratamento de saúde. [TEXTO DE EXEMPLO]
 
@@ -28,6 +29,7 @@ matches:
   # 2. Data automática
   # -------------------------------------------------------------------
   - trigger: "/hoje"
+    label: "Data de hoje por extenso"
     replace: "Cuiabá-MT, {{data}}."
     vars:
       - name: data
@@ -38,6 +40,7 @@ matches:
 
   # Data com deslocamento (offset em segundos: 15 dias = 1296000)
   - trigger: "/prazo"
+    label: "Data daqui a 15 dias"
     replace: "{{data}}"
     vars:
       - name: data
@@ -50,6 +53,7 @@ matches:
   # 3. Formulário pop-up com campos, menu suspenso e texto longo
   # -------------------------------------------------------------------
   - trigger: "/qualif"
+    label: "Formulário: qualificação da parte e do medicamento"
     replace: |-
       Processo n. {{form1.cnj}}
       Parte autora: {{form1.nome}}
@@ -90,6 +94,7 @@ matches:
   #    O usuário vê o rótulo curto (label) e o texto inserido é o id.
   # -------------------------------------------------------------------
   - trigger: "/prelim"
+    label: "Escolha: parágrafo de preliminar"
     replace: "{{paragrafo}}"
     vars:
       - name: paragrafo
@@ -109,6 +114,7 @@ matches:
   # 5. Texto formatado (HTML) para colar no Google Docs, com campos
   # -------------------------------------------------------------------
   - trigger: "/fmt"
+    label: "Texto formatado: pedidos finais"
     html: >-
       <p><b>DOS PEDIDOS</b></p>
       <p>Diante do exposto, o <b>ESTADO DE MATO GROSSO</b> requer:</p>
