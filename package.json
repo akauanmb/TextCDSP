@@ -1,0 +1,10 @@
+{
+  "name": "textcdsp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Expansor de texto da CDSP para Windows (Espanso portable + Electron).",
+  "scripts": {
+    "test": "node --test",
+    "baixar-espanso": "node scripts/baixar-espanso.js"
+  }
+}
