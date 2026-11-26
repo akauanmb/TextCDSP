@@ -239,7 +239,7 @@ function criarMotor({ caminhos, log }) {
       throw new Error(`Motor não encontrado em ${caminhos.origem}. Rode "npm run baixar-espanso".`);
     }
 
-    const resultado = { copiouMotor: false, copiouExemplos: false };
+    const resultado = { copiouMotor: false };
     const versaoEngine = lerTexto(caminhos.engineVersao);
     if (!fs.existsSync(caminhos.exe) || versaoEngine === null || versaoEngine.trim() !== versaoOrigem.trim()) {
       log.info(`Copiando o motor ${versaoOrigem.trim()} para ${caminhos.engine}${versaoEngine ? ` (estava na ${versaoEngine.trim()})` : ''}`);
@@ -263,16 +263,7 @@ function criarMotor({ caminhos, log }) {
 
     if (!fs.existsSync(caminhos.pessoalYml)) fs.writeFileSync(caminhos.pessoalYml, PESSOAL_INICIAL, 'utf8');
 
-    // Provisório até o Marco 4: biblioteca de exemplo só enquanto oficial\ estiver vazia.
-    if (fs.readdirSync(caminhos.oficial).length === 0) {
-      const exemplos = lerTexto(caminhos.exemplos);
-      if (exemplos === null) {
-        log.aviso(`Biblioteca de exemplo não encontrada em ${caminhos.exemplos}`);
-      } else {
-        fs.writeFileSync(path.join(caminhos.oficial, 'exemplos.yml'), exemplos, 'utf8');
-        resultado.copiouExemplos = true;
-      }
-    }
+    // Os snippets oficiais não são tratados aqui: vêm da sincronização (sincronizacao.js).
     return resultado;
   }
 

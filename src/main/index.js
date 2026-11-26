@@ -1,19 +1,25 @@
 'use strict';
 
-// Processo principal do TextCDSP: sem janela, só ícone na bandeja controlando o motor (Espanso portable).
+// Processo principal do TextCDSP: ícone na bandeja controlando o motor (Espanso portable),
+// sincronizando os snippets oficiais da pasta compartilhada e abrindo a janela de configurações.
 
 const path = require('node:path');
-const { app, dialog, shell } = require('electron');
+const { app, dialog, shell, Notification } = require('electron');
 const { criarCaminhos } = require('./caminhos');
 const { criarLog } = require('./log');
-const config = require('./config');
+const configArquivo = require('./config');
 const { criarMotor } = require('./motor');
+const { criarSincronizador } = require('./sincronizacao');
 const { criarBandeja } = require('./bandeja');
+const { criarJanelaConfiguracoes } = require('./janelaConfiguracoes');
+const { textoStatusSync } = require('../shared/statusSync');
 
 const INTERVALO_VIGIA_MS = 30 * 1000;
 
 // Os dados ficam em %APPDATA%\TextCDSP, também em desenvolvimento (sem isso viraria %APPDATA%\textcdsp).
 app.setPath('userData', path.join(app.getPath('appData'), 'TextCDSP'));
+// Necessário para as notificações do Windows. Em desenvolvimento, usa o executável do Electron.
+app.setAppUserModelId(app.isPackaged ? 'textcdsp.cdsp' : process.execPath);
 
 if (!app.requestSingleInstanceLock()) {
   // Já existe um TextCDSP rodando: este só encerra.
@@ -32,18 +38,110 @@ function iniciarAplicativo() {
   const log = criarLog(caminhos.logs);
   const motor = criarMotor({ caminhos, log });
 
+  let configuracao = configArquivo.ler(caminhos.configJson, log);
   let bandeja = null;
+  let janelaConfig = null;
   let estado = 'iniciando'; // "iniciando" | "ativo" | "pausado" | "erro"
   let bloqueadoPorOutroEspanso = false;
   let tentouReiniciar = false;
   let ocupado = false; // uma ação do motor por vez
   let encerrando = false;
   let vigia = null;
+  let agendaSync = null;
+  const notificacoesAbertas = new Set(); // evita que o Windows descarte a notificação antes do clique
+
+  // -----------------------------------------------------------------------
+  // Sincronização
+  // -----------------------------------------------------------------------
+
+  function notificarErroNaFonte({ erros }) {
+    if (!Notification.isSupported()) {
+      log.aviso('Notificações não suportadas neste computador; o erro na pasta de snippets só aparece nas configurações');
+      return;
+    }
+    const notificacao = new Notification({
+      title: 'TextCDSP: erro na pasta de snippets',
+      body: `A pasta tem ${erros.length} erro(s) e não foi aplicada. Os atalhos continuam na última versão válida. Clique para ver os detalhes.`,
+    });
+    notificacoesAbertas.add(notificacao);
+    notificacao.on('click', () => janelaConfig.abrir());
+    notificacao.on('close', () => notificacoesAbertas.delete(notificacao));
+    notificacao.on('failed', (_evento, erro) => {
+      log.aviso(`O Windows não mostrou a notificação: ${erro}`);
+      notificacoesAbertas.delete(notificacao);
+    });
+    notificacao.show();
+  }
+
+  const sincronizador = criarSincronizador({
+    caminhos,
+    log,
+    obterConfig: () => configuracao,
+    aoErroNovo: notificarErroNaFonte,
+    aoMudar: (resultado) => {
+      const texto = textoStatusSync(resultado);
+      log.info(`Menu: ${texto}`);
+      if (bandeja) bandeja.atualizarSync(texto);
+    },
+  });
+
+  const sincronizarEmSegundoPlano = () => sincronizador.sincronizar().catch((erro) => log.erro('Falha ao sincronizar', erro));
+
+  // Sincroniza a cada `intervaloSyncMin` minutos. Chamada de novo quando o intervalo muda.
+  function agendarSincronizacao() {
+    if (agendaSync) clearInterval(agendaSync);
+    agendaSync = setInterval(sincronizarEmSegundoPlano, configuracao.intervaloSyncMin * 60 * 1000);
+  }
+
+  // -----------------------------------------------------------------------
+  // Configurações
+  // -----------------------------------------------------------------------
+
+  function aplicarInicioComWindows() {
+    if (app.isPackaged) {
+      app.setLoginItemSettings({ openAtLogin: Boolean(configuracao.iniciarComWindows) });
+    } else {
+      // Em desenvolvimento isso registraria o electron.exe avulso para abrir com o Windows.
+      log.info('Início com o Windows ignorado em desenvolvimento');
+    }
+  }
+
+  // Chamada pela janela: valida, grava, aplica e sincroniza.
+  async function salvarConfiguracao(entrada) {
+    const { valor, erros } = configArquivo.validarEntrada(entrada);
+    if (erros.length > 0) return { ok: false, erros };
+    try {
+      configuracao = configArquivo.gravar(caminhos.configJson, { ...configuracao, ...valor });
+    } catch (erro) {
+      log.erro('Não foi possível gravar o config.json', erro);
+      return { ok: false, erros: ['Não foi possível salvar as configurações. Veja o log para detalhes.'] };
+    }
+    log.info('Configurações salvas');
+    aplicarInicioComWindows();
+    agendarSincronizacao();
+    // Se já havia uma sincronização em andamento, ela pode ter lido a pasta antiga: roda outra com a nova.
+    const jaEmAndamento = sincronizador.estadoAtual().sincronizando;
+    await sincronizador.sincronizar();
+    if (jaEmAndamento) await sincronizador.sincronizar();
+    return { ok: true, config: configuracao };
+  }
+
+  janelaConfig = criarJanelaConfiguracoes({
+    caminhos,
+    log,
+    obterConfig: () => configuracao,
+    salvarConfig: salvarConfiguracao,
+    sincronizador,
+  });
+
+  // -----------------------------------------------------------------------
+  // Motor
+  // -----------------------------------------------------------------------
 
   process.on('uncaughtException', (erro) => log.erro('Erro não tratado', erro));
   process.on('unhandledRejection', (erro) => log.erro('Promessa rejeitada sem tratamento', erro));
 
-  // Sem janelas: fechar uma janela (se um dia houver) não encerra o aplicativo.
+  // Sem janela principal: fechar a janela de configurações não encerra o aplicativo.
   app.on('window-all-closed', () => {});
   app.on('second-instance', () => log.info('Outra execução do TextCDSP foi bloqueada (já há uma aberta)'));
 
@@ -98,6 +196,8 @@ function iniciarAplicativo() {
   async function arrancar() {
     await motor.encerrarOrfaos(); // antes do preparar(): um motor órfão trava a cópia dos arquivos
     motor.preparar();
+    // Se match\oficial\ estiver vazia, volta a última versão válida antes de o motor iniciar.
+    if (await sincronizador.restaurarDoCache()) log.info('Snippets oficiais restaurados a partir do cache');
     await tentarIniciar();
   }
 
@@ -152,6 +252,7 @@ function iniciarAplicativo() {
     encerrando = true;
     evento.preventDefault();
     if (vigia) clearInterval(vigia);
+    if (agendaSync) clearInterval(agendaSync);
     log.info('Encerrando o TextCDSP');
     motor
       .parar()
@@ -164,25 +265,28 @@ function iniciarAplicativo() {
 
   app.whenReady().then(async () => {
     log.info(`TextCDSP ${app.getVersion()} iniciando (${app.isPackaged ? 'instalado' : 'desenvolvimento'}); dados em ${caminhos.dados}`);
-
-    const configuracao = config.ler(caminhos.configJson, log);
-    if (app.isPackaged) {
-      app.setLoginItemSettings({ openAtLogin: Boolean(configuracao.iniciarComWindows) });
-    } else {
-      // Em desenvolvimento isso registraria o electron.exe avulso para abrir com o Windows.
-      log.info('Início com o Windows ignorado em desenvolvimento');
-    }
+    aplicarInicioComWindows();
 
     bandeja = criarBandeja({
       icone: caminhos.icone,
       log,
       aoAlternar: alternar,
+      aoAtualizarSnippets: sincronizarEmSegundoPlano,
+      aoAbrirConfiguracoes: () => janelaConfig.abrir(),
       aoAbrirPessoais: () => abrir(caminhos.pessoalYml, 'o arquivo de atalhos pessoais'),
       aoAbrirLogs: () => abrir(caminhos.logs, 'a pasta de logs'),
       aoSair: () => app.quit(),
     });
+    bandeja.atualizarSync(textoStatusSync(sincronizador.estadoAtual()));
+
+    // Primeira execução: sem pasta configurada, abre as configurações.
+    if (!configuracao.fonteSnippets) janelaConfig.abrir();
 
     await exclusivo(arrancar);
     vigia = setInterval(() => vigiar().catch((erro) => log.erro('Falha na verificação periódica', erro)), INTERVALO_VIGIA_MS);
+
+    // Sincroniza depois de o motor iniciar (não atrasa a partida); o motor recarrega sozinho.
+    sincronizarEmSegundoPlano();
+    agendarSincronizacao();
   });
 }

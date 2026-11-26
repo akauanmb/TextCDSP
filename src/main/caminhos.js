@@ -23,6 +23,7 @@ function criarCaminhos({ empacotado, resourcesPath, appPath, userData }) {
   const configMotor = path.join(raizMotor, '.espanso');
   const match = path.join(configMotor, 'match');
   const runtime = path.join(raizMotor, '.espanso-runtime');
+  const cache = path.join(userData, 'cache');
 
   return {
     // Origem
@@ -33,9 +34,18 @@ function criarCaminhos({ empacotado, resourcesPath, appPath, userData }) {
     // Dados do TextCDSP
     dados: userData,
     configJson: path.join(userData, 'config.json'),
-    cache: path.join(userData, 'cache'),
     logs: path.join(userData, 'logs'),
     logApp: path.join(userData, 'logs', 'app.log'),
+
+    // Cache da sincronização. As pastas "novo/antigo" servem à troca atômica e ficam FORA de
+    // match\ (o Espanso carregaria qualquer .yml de subpastas de match\; ESPANSO-NOTAS, P6).
+    cache,
+    ultimaValida: path.join(cache, 'ultima-valida'),
+    estado: path.join(cache, 'estado.json'),
+    stagingOficial: path.join(cache, 'oficial.novo'),
+    antigoOficial: path.join(cache, 'oficial.antigo'),
+    stagingCache: path.join(cache, 'ultima-valida.novo'),
+    antigoCache: path.join(cache, 'ultima-valida.antigo'),
 
     // Motor em uso
     engine,
@@ -53,8 +63,9 @@ function criarCaminhos({ empacotado, resourcesPath, appPath, userData }) {
     logMotor: path.join(runtime, 'espanso.log'),
 
     // Arquivos do aplicativo
-    exemplos: path.join(appPath, 'snippets', 'exemplos.yml'),
     icone: path.join(appPath, 'assets', 'icone.ico'),
+    paginaConfiguracoes: path.join(appPath, 'src', 'renderer', 'configuracoes', 'index.html'),
+    preloadConfiguracoes: path.join(appPath, 'src', 'preload', 'configuracoes.js'),
   };
 }
 

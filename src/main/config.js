@@ -61,4 +61,34 @@ function gravar(arquivo, configuracao) {
   return completa;
 }
 
-module.exports = { PADROES, ler, gravar };
+const INTERVALO_MINIMO_MIN = 5;
+const INTERVALO_MAXIMO_MIN = 120;
+
+// Confere o que veio da janela de configurações. Devolve { valor, erros }: `valor` só tem as chaves
+// válidas que vieram em `entrada`, já normalizadas (texto sem espaços nas pontas, número inteiro).
+function validarEntrada(entrada) {
+  if (entrada === null || typeof entrada !== 'object' || Array.isArray(entrada)) {
+    return { valor: {}, erros: ['Configuração inválida.'] };
+  }
+  const valor = {};
+  const erros = [];
+
+  if ('fonteSnippets' in entrada) {
+    if (typeof entrada.fonteSnippets === 'string') valor.fonteSnippets = entrada.fonteSnippets.trim();
+    else erros.push('A pasta de snippets precisa ser um texto.');
+  }
+  if ('intervaloSyncMin' in entrada) {
+    const n = typeof entrada.intervaloSyncMin === 'string' && entrada.intervaloSyncMin.trim() !== '' ? Number(entrada.intervaloSyncMin) : entrada.intervaloSyncMin;
+    if (Number.isInteger(n) && n >= INTERVALO_MINIMO_MIN && n <= INTERVALO_MAXIMO_MIN) valor.intervaloSyncMin = n;
+    else erros.push(`O intervalo de sincronização deve ser um número inteiro de ${INTERVALO_MINIMO_MIN} a ${INTERVALO_MAXIMO_MIN} minutos.`);
+  }
+  for (const chave of ['iniciarComWindows', 'modoAdmin']) {
+    if (chave in entrada) {
+      if (typeof entrada[chave] === 'boolean') valor[chave] = entrada[chave];
+      else erros.push(`A opção "${chave}" precisa ser verdadeira ou falsa.`);
+    }
+  }
+  return { valor, erros };
+}
+
+module.exports = { PADROES, INTERVALO_MINIMO_MIN, INTERVALO_MAXIMO_MIN, ler, gravar, validarEntrada };

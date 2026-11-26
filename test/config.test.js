@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { PADROES, ler, gravar } = require('../src/main/config');
+const { PADROES, ler, gravar, validarEntrada } = require('../src/main/config');
 
 function pastaTemporaria(t) {
   const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'textcdsp-config-'));
@@ -129,4 +129,43 @@ test('gravar: se a gravação falhar, o arquivo anterior continua intacto', (t) 
   assert.throws(() => gravar(arquivo, { intervaloSyncMin: 99 }));
   assert.equal(fs.readFileSync(arquivo, 'utf8'), antes);
   assert.equal(ler(arquivo).intervaloSyncMin, 10);
+});
+
+// ---------------------------------------------------------------------------
+// validarEntrada (o que vem da janela de configurações)
+// ---------------------------------------------------------------------------
+
+test('validarEntrada: aceita valores válidos e normaliza', () => {
+  const { valor, erros } = validarEntrada({ fonteSnippets: '  G:\CDSP\snippets  ', intervaloSyncMin: '30', iniciarComWindows: false, modoAdmin: true });
+  assert.deepEqual(erros, []);
+  assert.deepEqual(valor, { fonteSnippets: 'G:\CDSP\snippets', intervaloSyncMin: 30, iniciarComWindows: false, modoAdmin: true });
+});
+
+test('validarEntrada: intervalo só de 5 a 120 minutos, inteiro', () => {
+  for (const bom of [5, 15, 120, '5', '120']) {
+    assert.deepEqual(validarEntrada({ intervaloSyncMin: bom }).erros, [], String(bom));
+  }
+  for (const ruim of [4, 121, 0, -5, 7.5, 'abc', '', null, NaN, '4']) {
+    const { erros } = validarEntrada({ intervaloSyncMin: ruim });
+    assert.equal(erros.length, 1, String(ruim));
+    assert.match(erros[0], /5 a 120/);
+  }
+});
+
+test('validarEntrada: tipos errados nas outras chaves', () => {
+  assert.equal(validarEntrada({ fonteSnippets: 5 }).erros.length, 1);
+  assert.equal(validarEntrada({ iniciarComWindows: 'sim' }).erros.length, 1);
+  assert.equal(validarEntrada({ modoAdmin: 1 }).erros.length, 1);
+});
+
+test('validarEntrada: só devolve as chaves que vieram e ignora as desconhecidas', () => {
+  const { valor, erros } = validarEntrada({ intervaloSyncMin: 10, chaveEstranha: 'x' });
+  assert.deepEqual(erros, []);
+  assert.deepEqual(valor, { intervaloSyncMin: 10 });
+});
+
+test('validarEntrada: entrada que não é um objeto', () => {
+  for (const ruim of [null, undefined, 'texto', 42, [1]]) {
+    assert.equal(validarEntrada(ruim).erros.length, 1);
+  }
 });

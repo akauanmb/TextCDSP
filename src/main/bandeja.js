@@ -4,18 +4,23 @@
 
 const { Tray, Menu, nativeImage } = require('electron');
 
-// estado: "iniciando" | "ativo" | "pausado" | "erro"
-function criarBandeja({ icone, aoAlternar, aoAbrirPessoais, aoAbrirLogs, aoSair, log }) {
+function criarBandeja({ icone, aoAlternar, aoAtualizarSnippets, aoAbrirConfiguracoes, aoAbrirPessoais, aoAbrirLogs, aoSair, log }) {
   const imagem = nativeImage.createFromPath(icone);
   if (imagem.isEmpty()) log.aviso(`Não foi possível carregar o ícone da bandeja em ${icone}`);
   const tray = new Tray(imagem);
 
-  function montarMenu(estado) {
+  let estadoMotor = 'iniciando'; // "iniciando" | "ativo" | "pausado" | "erro"
+  let textoSync = 'Sincronizando snippets...';
+
+  function montarMenu() {
     return Menu.buildFromTemplate([
-      { label: `Status: ${estado}`, enabled: false },
-      { label: estado === 'ativo' ? 'Pausar' : 'Retomar', enabled: estado !== 'iniciando', click: aoAlternar },
-      { label: 'Atualizar snippets (em breve)', enabled: false },
+      { label: `Status: ${estadoMotor}`, enabled: false },
+      { label: textoSync, enabled: false },
+      { type: 'separator' },
+      { label: estadoMotor === 'ativo' ? 'Pausar' : 'Retomar', enabled: estadoMotor !== 'iniciando', click: aoAlternar },
+      { label: 'Atualizar snippets', click: aoAtualizarSnippets },
       { label: 'Abrir biblioteca (em breve)', enabled: false },
+      { label: 'Configurações...', click: aoAbrirConfiguracoes },
       { label: 'Abrir meus snippets pessoais', click: aoAbrirPessoais },
       { label: 'Abrir pasta de logs', click: aoAbrirLogs },
       { type: 'separator' },
@@ -23,13 +28,23 @@ function criarBandeja({ icone, aoAlternar, aoAbrirPessoais, aoAbrirLogs, aoSair,
     ]);
   }
 
-  function atualizar(estado) {
-    tray.setToolTip(`TextCDSP - ${estado}`);
-    tray.setContextMenu(montarMenu(estado));
+  function reconstruir() {
+    tray.setToolTip(`TextCDSP - ${estadoMotor}`);
+    tray.setContextMenu(montarMenu());
   }
 
-  atualizar('iniciando');
-  return { atualizar, destruir: () => tray.destroy() };
+  reconstruir();
+  return {
+    atualizar(estado) {
+      estadoMotor = estado;
+      reconstruir();
+    },
+    atualizarSync(texto) {
+      textoSync = texto;
+      reconstruir();
+    },
+    destruir: () => tray.destroy(),
+  };
 }
 
 module.exports = { criarBandeja };
