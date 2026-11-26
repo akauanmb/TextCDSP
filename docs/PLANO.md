@@ -22,7 +22,7 @@ TextCDSP (Electron, ícone na bandeja)
 | 2 | Validador de snippets + biblioteca de exemplo | Sonnet | 1 |
 | 3 | App na bandeja controlando o motor | Sonnet | 1, 2 |
 | 4 | Sincronização com a pasta compartilhada + tela de configurações | Sonnet | 3 |
-| 5 | Janela Biblioteca (busca e cópia) | Sonnet | 4 |
+| 5 | Janela Biblioteca (busca e cópia) + criação de atalhos pessoais | Sonnet | 4 |
 | 6 | Instalador `.exe` | Sonnet | 5 |
 | 7 | Aviso de nova versão + piloto no setor | Sonnet + você | 6 |
 | 8 | Editor visual de snippets (opcional) | Sonnet | 7 |
@@ -41,7 +41,9 @@ Cada prompt depende destas escolhas. Se mudar alguma, ajuste também o `CLAUDE.m
 3. **Fonte dos snippets oficiais = uma pasta.** Pode ser o Google Drive para computador ou uma pasta de rede. A sincronização é uma cópia com validação, e o setor continua funcionando se a pasta ficar indisponível.
    - **Atenção:** confira se o repositório no GitHub está público. Se estiver, qualquer pessoa pode ler o que estiver nele.
    - Os textos oficiais da CDSP devem ficar na pasta compartilhada, não no repositório. Se preferir versionar os textos no git, deixe o repositório privado.
-4. **Apenas administradores publicam snippets oficiais.** Na prática, quem tem permissão de escrita na pasta. Os demais usuários têm o `pessoal.yml`.
+4. **Qualquer pessoa cria os próprios atalhos pessoais; só administradores publicam os oficiais.**
+   - **Pessoais:** criados, editados e excluídos pela janela Biblioteca (Marco 5), sem ver YAML. Só texto simples, sem campos, escolhas ou formatação. Ficam no `pessoal.yml` de cada máquina.
+   - **Oficiais:** publicados por quem tem permissão de escrita na pasta compartilhada. Podem usar todos os recursos (formulários, escolhas, texto formatado).
 
 ---
 
@@ -259,16 +261,16 @@ Commit: "Marco 4: sincronização com pasta compartilhada e configurações"
 
 ---
 
-## Marco 5: janela Biblioteca
+## Marco 5: janela Biblioteca e atalhos pessoais
 
 ````text
-Leia o CLAUDE.md e o docs/PLANO.md. Execute o MARCO 5.
+Leia o CLAUDE.md, o docs/PLANO.md e o docs/ESPANSO-NOTAS.md. Execute o MARCO 5.
 
-Objetivo: uma janela onde qualquer pessoa encontra um snippet, vê o que ele faz e copia o texto quando não quiser ou não puder usar o atalho.
+Objetivo: uma janela onde qualquer pessoa encontra um snippet, vê o que ele faz e copia o texto quando não quiser ou não puder usar o atalho; e onde cria, edita e exclui os próprios atalhos pessoais de texto simples, sem ver YAML.
 
 Entregas:
 1. src/renderer/biblioteca/ + src/preload/biblioteca.js. Abre pelo menu da bandeja ("Abrir biblioteca", agora habilitado) e com clique duplo no ícone da bandeja. Uma única janela (se já estiver aberta, foca nela).
-2. Dados: a lista de Snippet vem de validarBiblioteca, aplicada sobre match/oficial/ e pessoal.yml. Os pessoais aparecem marcados como "Pessoal". IPC: "biblioteca:listar" e "biblioteca:copiar". Nada além disso.
+2. Dados: a lista de Snippet vem de validarBiblioteca, aplicada sobre match/oficial/ e pessoal.yml. Os pessoais aparecem marcados como "Pessoal". IPC: "biblioteca:listar", "biblioteca:copiar", "pessoal:salvar", "pessoal:excluir" e "pessoal:abrir-arquivo". Nada além disso.
 3. Layout: à esquerda, busca + lista; à direita, os detalhes.
    - Busca instantânea (sem botão) em trigger, label, preview e categoria; sem diferenciar maiúsculas nem acentos.
    - Filtro por categoria (lista suspensa com "Todas" + categorias + "Pessoal").
@@ -280,16 +282,34 @@ Entregas:
    - Rodapé: "N snippets, atualizado em dd/mm hh:mm".
    - A lista se atualiza sozinha quando uma sincronização aplicar uma versão nova (evento IPC "biblioteca:mudou").
 4. Para resolver as datas em "Copiar texto", implemente em src/shared/ uma função pura que formate as datas do Espanso (%d, %-d, %m, %Y, %B, %A, %H, %M) em pt-BR, com teste.
+5. Atalhos pessoais de texto simples:
+   - Botão "Novo atalho pessoal" acima da lista. Abre, no painel da direita, um formulário com três campos: Atalho (ex.: /ola), Nome (vira o label) e Texto (área de várias linhas). Botões "Salvar" e "Cancelar".
+   - Nos detalhes de um snippet pessoal "editável", aparecem "Editar" e "Excluir" (com confirmação). Editável = tem só trigger, label e replace, sem vars. Os pessoais que não são editáveis (escritos à mão com variáveis) mostram o aviso "Este atalho foi criado direto no arquivo" e o botão "Abrir arquivo" (pessoal:abrir-arquivo). Snippets oficiais nunca mostram Editar nem Excluir.
+   - Validação no formulário, com a mensagem ao lado do campo e sem fechar o formulário:
+     * atalho no padrão ^/[a-z0-9]{2,30}$ (normalize para minúsculas; se faltar a barra inicial, acrescente);
+     * nome e texto não vazios;
+     * o texto não pode conter "{{" nem "}}" (o Espanso interpretaria como variável);
+     * rode validarBiblioteca com a biblioteca inteira simulada após a mudança (oficiais + pessoais). Qualquer trigger-duplicado ou trigger-prefixo que envolva o atalho novo BLOQUEIA o salvamento, mesmo quando o conflito é com um oficial. A mensagem cita o outro atalho e de onde ele vem ("já existe o atalho oficial /cont").
+   - Gravação: implemente em src/shared/pessoais.js uma função pura aplicarAlteracaoPessoal(conteudoYaml, operacao), onde operacao = { tipo: "criar" | "editar" | "excluir", triggerOriginal?, trigger?, label?, texto? }, que devolve o novo conteúdo. Use yaml.parseDocument e altere só o match afetado, preservando comentários, ordem e os matches escritos à mão. Precisa funcionar com o pessoal.yml inicial do Marco 3 (só comentários, sem "matches"). Para o texto, use bloco literal (|-) do YAML quando houver quebra de linha.
+   - Se o pessoal.yml atual não for YAML válido (editado à mão com erro), NÃO grava. Mostra "Seu arquivo de atalhos pessoais tem um erro na linha N" com o botão "Abrir arquivo".
+   - No processo principal: leia, aplique, grave de forma atômica (.tmp + rename) e emita "biblioteca:mudou". O Espanso recarrega sozinho (P7 do ESPANSO-NOTAS.md); não reinicie o motor.
+   - Antes de cada gravação, mantenha uma cópia em pessoal.yml.bak (só a última).
+6. Testes: test/pessoais.test.js cobrindo: criar no arquivo inicial só com comentários; criar com matches existentes; editar mudando o trigger; excluir; preservação de comentários e de um match escrito à mão com vars; texto com várias linhas, aspas, dois-pontos e acentos (o resultado tem que ser lido de volta pelo validador com o mesmo texto).
 
-Fora do escopo: editar ou criar snippets.
+Fora do escopo: criar ou editar snippets oficiais; snippets pessoais com campos, escolhas, datas ou formatação.
 
 Critérios de aceite:
 - npm test passa.
 - Buscar "preliminar" (sem acento ou com acento) encontra /prelim.
 - "Copiar texto" de /fmt e colar no Google Docs mantém negrito e lista numerada.
 - Publicar um snippet novo na pasta-fonte e clicar "Atualizar snippets": ele aparece na Biblioteca aberta sem reabrir a janela.
+- Criar o atalho pessoal /ola com um texto de 3 linhas com acentos: em até 5 s ele funciona no Google Docs, sem reiniciar o app, e as quebras de linha saem corretas.
+- Editar /ola para /saudacao: /ola para de funcionar e /saudacao funciona.
+- Tentar criar /contestacao (com /cont oficial existente): o salvamento é bloqueado com a mensagem citando /cont.
+- Escrever à mão no pessoal.yml um match com var date e criar outro atalho pela janela: o escrito à mão continua no arquivo, com seus comentários.
+- Excluir /saudacao: ele some da lista e para de funcionar.
 
-Commit: "Marco 5: janela Biblioteca"
+Commit: "Marco 5: janela Biblioteca e atalhos pessoais"
 ````
 
 ---
@@ -362,15 +382,15 @@ Commit: "Marco 7: aviso de nova versão e roteiro de piloto"
 
 ## Marco 8 (opcional): editor visual de snippets
 
-Faça este marco só se, depois do piloto, editar YAML for um obstáculo para quem administra os snippets. Até lá, os snippets podem ser escritos pedindo ao Claude (ver Trilha C).
+Faça este marco só se, depois do piloto, editar YAML for um obstáculo para quem administra os snippets **oficiais**. Os atalhos pessoais de texto simples já existem desde o Marco 5. Até lá, os oficiais podem ser escritos pedindo ao Claude (ver Trilha C).
 
 ````text
 Leia o CLAUDE.md e o docs/PLANO.md. Execute o MARCO 8.
 
-Objetivo: no modo administrador, criar e editar snippets oficiais sem escrever YAML.
+Objetivo: no modo administrador, criar e editar snippets oficiais sem escrever YAML, com todos os tipos.
 
 Entregas:
-1. Na Biblioteca, se config.modoAdmin for true: botões "Novo", "Editar" e "Excluir" nos snippets oficiais. Os pessoais podem ser editados por todos, gravando em pessoal.yml.
+1. Na Biblioteca, se config.modoAdmin for true: botões "Novo oficial", "Editar" e "Excluir" nos snippets oficiais. Reaproveite o formulário e a lógica de src/shared/pessoais.js do Marco 5, generalizando a função para qualquer tipo de match em vez de duplicá-la. Os atalhos pessoais continuam só com texto simples.
 2. Formulário de edição por tipo:
    - texto: trigger, label, categoria (arquivo) e texto;
    - formatado: editor com negrito, itálico, sublinhado, lista numerada e com marcadores, gerando HTML limpo (somente p, b, i, u, ol, ul, li, br);
@@ -383,7 +403,7 @@ Entregas:
    - Concorrência: guarde o hash do arquivo ao abrir; se mudou na fonte até o momento de salvar, recusa com "Outra pessoa alterou este arquivo, recarregue".
    - Antes de sobrescrever, copie o arquivo para <fonte>/_historico/AAAA-MM-DD_HHMMSS_<arquivo>.yml.
    - Após gravar, dispara sincronizar().
-4. Testes da função que aplica uma alteração em um documento YAML (inclusão, edição, exclusão, preservação de comentários).
+4. Testes da função generalizada (inclusão, edição e exclusão de cada tipo, preservação de comentários). Os testes de test/pessoais.test.js do Marco 5 continuam passando sem alteração.
 
 Critérios de aceite:
 - npm test passa.
