@@ -16,6 +16,9 @@
 
 * { box-sizing: border-box; }
 
+/* Sem isto, um "display" definido aqui (flex, grid...) faria o atributo hidden não esconder o elemento. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--fundo);

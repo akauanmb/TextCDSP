@@ -226,6 +226,7 @@ show_notifications: false
 | `match\_pasta\q.yml` (arquivo normal dentro de pasta iniciada por `_`) | **Sim** |
 | `match\oficial\w.yaml` | Sim (aceita `.yaml`) |
 | `match\oficial\v.txt` | Não |
+| `match\pessoal.yml.bak` e `match\pessoal.yml.tmp` (com YAML válido dentro; testado no Marco 5) | Não (só `.yml` e `.yaml` são lidos) |
 
 Conclusões:
 

@@ -4,7 +4,7 @@
 
 const { Tray, Menu, nativeImage } = require('electron');
 
-function criarBandeja({ icone, aoAlternar, aoAtualizarSnippets, aoAbrirConfiguracoes, aoAbrirPessoais, aoAbrirLogs, aoSair, log }) {
+function criarBandeja({ icone, aoAlternar, aoAtualizarSnippets, aoAbrirBiblioteca, aoAbrirConfiguracoes, aoAbrirPessoais, aoAbrirLogs, aoSair, log }) {
   const imagem = nativeImage.createFromPath(icone);
   if (imagem.isEmpty()) log.aviso(`Não foi possível carregar o ícone da bandeja em ${icone}`);
   const tray = new Tray(imagem);
@@ -19,7 +19,7 @@ function criarBandeja({ icone, aoAlternar, aoAtualizarSnippets, aoAbrirConfigura
       { type: 'separator' },
       { label: estadoMotor === 'ativo' ? 'Pausar' : 'Retomar', enabled: estadoMotor !== 'iniciando', click: aoAlternar },
       { label: 'Atualizar snippets', click: aoAtualizarSnippets },
-      { label: 'Abrir biblioteca (em breve)', enabled: false },
+      { label: 'Abrir biblioteca', click: aoAbrirBiblioteca },
       { label: 'Configurações...', click: aoAbrirConfiguracoes },
       { label: 'Abrir meus snippets pessoais', click: aoAbrirPessoais },
       { label: 'Abrir pasta de logs', click: aoAbrirLogs },
@@ -32,6 +32,9 @@ function criarBandeja({ icone, aoAlternar, aoAtualizarSnippets, aoAbrirConfigura
     tray.setToolTip(`TextCDSP - ${estadoMotor}`);
     tray.setContextMenu(montarMenu());
   }
+
+  // Clique duplo no ícone abre a Biblioteca.
+  tray.on('double-click', aoAbrirBiblioteca);
 
   reconstruir();
   return {

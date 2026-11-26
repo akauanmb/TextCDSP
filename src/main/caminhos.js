@@ -57,6 +57,7 @@ function criarCaminhos({ empacotado, resourcesPath, appPath, userData }) {
     match,
     baseYml: path.join(match, 'base.yml'),
     pessoalYml: path.join(match, 'pessoal.yml'),
+    pessoalBak: path.join(match, 'pessoal.yml.bak'),
     oficial: path.join(match, 'oficial'),
     runtime,
     kvs: path.join(runtime, 'kvs'),
@@ -66,6 +67,8 @@ function criarCaminhos({ empacotado, resourcesPath, appPath, userData }) {
     icone: path.join(appPath, 'assets', 'icone.ico'),
     paginaConfiguracoes: path.join(appPath, 'src', 'renderer', 'configuracoes', 'index.html'),
     preloadConfiguracoes: path.join(appPath, 'src', 'preload', 'configuracoes.js'),
+    paginaBiblioteca: path.join(appPath, 'src', 'renderer', 'biblioteca', 'index.html'),
+    preloadBiblioteca: path.join(appPath, 'src', 'preload', 'biblioteca.js'),
   };
 }
 

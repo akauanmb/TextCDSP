@@ -549,3 +549,33 @@ test('categoria: nome do arquivo sem .yml', () => {
 test('BOM no início do arquivo é tolerado', () => {
   semProblemas(valida(`﻿${lista(match('/a1'))}`));
 });
+
+// ---------------------------------------------------------------------------
+// Dados extras usados pela Biblioteca (Marco 5)
+// ---------------------------------------------------------------------------
+
+test('snippet traz formato, saída bruta e as datas (nome, formato e offset)', () => {
+  const r = valida(lista(match('/a1', '    vars:\n      - name: d\n        type: date\n        params:\n          format: "%d/%m/%Y"\n          offset: 1296000\n').replace('"texto"', '"Em {{d}}"')));
+  const s = r.snippets[0];
+  assert.equal(s.formato, 'replace');
+  assert.equal(s.saida, 'Em {{d}}');
+  assert.deepEqual(s.datas, [{ nome: 'd', formato: '%d/%m/%Y', offset: 1296000 }]);
+});
+
+test('snippet html e markdown: formato correspondente e sem datas', () => {
+  assert.equal(unico('matches:\n  - trigger: "/a1"\n    label: "x"\n    html: "<p>oi</p>"\n').formato, 'html');
+  assert.equal(unico('matches:\n  - trigger: "/a1"\n    label: "x"\n    markdown: "**oi**"\n').formato, 'markdown');
+  assert.deepEqual(unico(lista(match('/a1'))).datas, []);
+});
+
+test('trigger-duplicado e trigger-prefixo trazem os triggers e arquivos envolvidos', () => {
+  const dup = validarBiblioteca([arq(lista(match('/cont')), 'a.yml'), arq(lista(match('/cont')), 'pessoal.yml')]);
+  const d = doRegra(dup.erros, 'trigger-duplicado')[0];
+  assert.deepEqual(d.triggers, ['/cont', '/cont']);
+  assert.deepEqual(d.arquivos, ['a.yml', 'pessoal.yml']);
+
+  const pre = validarBiblioteca([arq(lista(match('/cont')), 'a.yml'), arq(lista(match('/contestacao')), 'pessoal.yml')]);
+  const p = doRegra(pre.erros, 'trigger-prefixo')[0];
+  assert.deepEqual(p.triggers, ['/cont', '/contestacao']);
+  assert.deepEqual(p.arquivos, ['a.yml', 'pessoal.yml']);
+});

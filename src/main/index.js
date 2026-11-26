@@ -12,6 +12,7 @@ const { criarMotor } = require('./motor');
 const { criarSincronizador } = require('./sincronizacao');
 const { criarBandeja } = require('./bandeja');
 const { criarJanelaConfiguracoes } = require('./janelaConfiguracoes');
+const { criarJanelaBiblioteca } = require('./janelaBiblioteca');
 const { textoStatusSync } = require('../shared/statusSync');
 
 const INTERVALO_VIGIA_MS = 30 * 1000;
@@ -41,6 +42,8 @@ function iniciarAplicativo() {
   let configuracao = configArquivo.ler(caminhos.configJson, log);
   let bandeja = null;
   let janelaConfig = null;
+  let janelaBiblioteca = null;
+  let ultimoAplicadoEm = null; // para avisar a Biblioteca só quando uma versão nova foi aplicada
   let estado = 'iniciando'; // "iniciando" | "ativo" | "pausado" | "erro"
   let bloqueadoPorOutroEspanso = false;
   let tentouReiniciar = false;
@@ -82,8 +85,14 @@ function iniciarAplicativo() {
       const texto = textoStatusSync(resultado);
       log.info(`Menu: ${texto}`);
       if (bandeja) bandeja.atualizarSync(texto);
+      // Uma versão nova dos snippets oficiais foi aplicada: a Biblioteca aberta relê a lista.
+      if (resultado.aplicadoEm !== ultimoAplicadoEm) {
+        ultimoAplicadoEm = resultado.aplicadoEm;
+        if (janelaBiblioteca) janelaBiblioteca.notificarMudanca();
+      }
     },
   });
+  ultimoAplicadoEm = sincronizador.estadoAtual().aplicadoEm;
 
   const sincronizarEmSegundoPlano = () => sincronizador.sincronizar().catch((erro) => log.erro('Falha ao sincronizar', erro));
 
@@ -132,6 +141,12 @@ function iniciarAplicativo() {
     obterConfig: () => configuracao,
     salvarConfig: salvarConfiguracao,
     sincronizador,
+  });
+
+  janelaBiblioteca = criarJanelaBiblioteca({
+    caminhos,
+    log,
+    obterAplicadoEm: () => sincronizador.estadoAtual().aplicadoEm,
   });
 
   // -----------------------------------------------------------------------
@@ -272,6 +287,7 @@ function iniciarAplicativo() {
       log,
       aoAlternar: alternar,
       aoAtualizarSnippets: sincronizarEmSegundoPlano,
+      aoAbrirBiblioteca: () => janelaBiblioteca.abrir(),
       aoAbrirConfiguracoes: () => janelaConfig.abrir(),
       aoAbrirPessoais: () => abrir(caminhos.pessoalYml, 'o arquivo de atalhos pessoais'),
       aoAbrirLogs: () => abrir(caminhos.logs, 'a pasta de logs'),

@@ -1,0 +1,155 @@
+:root {
+  color-scheme: light;
+  --texto: #1f2933;
+  --suave: #52606d;
+  --borda: #cbd2d9;
+  --fundo: #f5f7fa;
+  --branco: #fff;
+  --azul: #1f4e79;
+  --azul-escuro: #173b5c;
+  --azul-claro: #e3eef8;
+  --erro: #a61b1b;
+  --erro-fundo: #fdecec;
+  --aviso: #8a5a00;
+  --aviso-fundo: #fff5dd;
+  --ok: #1b6b3a;
+  --mono: Consolas, "Cascadia Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+/* Sem isto, um "display" definido aqui (flex, grid...) faria o atributo hidden não esconder o elemento. */
+[hidden] { display: none !important; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--fundo);
+  color: var(--texto);
+  font: 14px/1.45 "Segoe UI", system-ui, sans-serif;
+}
+
+/* ---------- faixa de aviso do pessoal.yml ---------- */
+.faixa {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--erro-fundo);
+  border-bottom: 1px solid #eab0b0;
+  color: var(--erro);
+}
+
+/* ---------- layout ---------- */
+.app { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(280px, 340px) 1fr; }
+
+.lateral {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px;
+  gap: 8px;
+  background: var(--branco);
+  border-right: 1px solid var(--borda);
+}
+
+.busca { display: grid; gap: 6px; }
+.rotulo-categoria { color: var(--suave); font-size: 12px; margin-bottom: -4px; }
+
+input[type="search"], input[type="text"], select, textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--borda);
+  border-radius: 4px;
+  background: var(--branco);
+  color: inherit;
+  font: inherit;
+}
+textarea { min-height: 150px; resize: vertical; }
+input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--erro); }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, li:focus-visible {
+  outline: 2px solid var(--azul);
+  outline-offset: 1px;
+}
+
+button {
+  padding: 6px 14px;
+  border: 1px solid var(--borda);
+  border-radius: 4px;
+  background: var(--branco);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { background: var(--fundo); }
+button:disabled { opacity: 0.55; cursor: default; }
+button.principal { background: var(--azul); border-color: var(--azul); color: #fff; }
+button.principal:hover:not(:disabled) { background: var(--azul-escuro); }
+button.perigo { border-color: var(--erro); color: var(--erro); }
+button.perigo:hover:not(:disabled) { background: var(--erro-fundo); }
+button.perigo-forte { background: var(--erro); border-color: var(--erro); color: #fff; }
+button.perigo-forte:hover:not(:disabled) { background: #861616; }
+
+/* ---------- lista ---------- */
+#lista { flex: 1; min-height: 0; margin: 0; padding: 0; overflow-y: auto; list-style: none; border: 1px solid var(--borda); border-radius: 6px; }
+#lista li { padding: 8px 10px; border-bottom: 1px solid var(--fundo); cursor: pointer; }
+#lista li:last-child { border-bottom: 0; }
+#lista li:hover { background: var(--fundo); }
+#lista li[aria-selected="true"] { background: var(--azul-claro); box-shadow: inset 3px 0 0 var(--azul); }
+.item-trigger { display: block; font-family: var(--mono); font-weight: 600; }
+.item-nome { display: block; overflow-wrap: anywhere; }
+.item-categoria { display: block; color: var(--suave); font-size: 12px; }
+.vazio-lista { padding: 16px 10px; color: var(--suave); cursor: default; }
+
+/* ---------- painel de detalhes e formulário ---------- */
+.painel { min-width: 0; overflow-y: auto; padding: 20px 24px; }
+.painel h2 { margin: 0 0 4px; font-size: 18px; overflow-wrap: anywhere; }
+.painel h3 { margin: 18px 0 6px; font-size: 13px; color: var(--suave); text-transform: uppercase; letter-spacing: 0.03em; }
+.trigger-grande { margin: 0 0 2px; font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--azul); overflow-wrap: anywhere; }
+.etiquetas { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+.etiqueta { padding: 2px 8px; border-radius: 10px; background: var(--azul-claro); color: var(--azul); font-size: 12px; }
+.etiqueta.pessoal { background: #e6f4ea; color: var(--ok); }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 4px 8px; border-bottom: 1px solid var(--borda); text-align: left; vertical-align: top; }
+th { color: var(--suave); font-weight: 600; }
+td.nome-campo { font-family: var(--mono); }
+
+pre.texto {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  padding: 10px 12px;
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  font: 13px/1.5 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.acoes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
+.mensagem { font-size: 13px; color: var(--ok); }
+.mensagem.erro { color: var(--erro); }
+.aviso-arquivo { margin-top: 16px; padding: 8px 12px; border-radius: 6px; background: var(--aviso-fundo); border: 1px solid #ecd08e; color: var(--aviso); }
+.aviso-arquivo p { margin: 0 0 8px; }
+.confirmacao { margin-top: 16px; padding: 10px 12px; border-radius: 6px; background: var(--erro-fundo); border: 1px solid #eab0b0; }
+.confirmacao p { margin: 0 0 8px; }
+.confirmacao .acoes { margin-top: 0; }
+.vazio-painel { color: var(--suave); margin-top: 40px; text-align: center; }
+
+/* formulário */
+.campo { margin: 14px 0; }
+.campo label { display: block; margin-bottom: 4px; font-weight: 600; }
+.dica { margin: 4px 0 0; color: var(--suave); font-size: 12px; }
+.erro-campo { margin: 4px 0 0; color: var(--erro); font-size: 13px; }
+.erro-geral { margin: 12px 0 0; padding: 8px 12px; border-radius: 6px; background: var(--erro-fundo); border: 1px solid #eab0b0; color: var(--erro); }
+.erro-geral p { margin: 0 0 8px; }
+#campo-trigger { font-family: var(--mono); max-width: 240px; }
+
+/* ---------- rodapé ---------- */
+.rodape { padding: 6px 16px; border-top: 1px solid var(--borda); background: var(--branco); color: var(--suave); font-size: 12px; }

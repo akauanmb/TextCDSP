@@ -378,6 +378,12 @@ function validarMatch(item, lido, globais, problemas, contexto) {
     tipo: classificarTipo(formato, variaveis),
     campos: descreverCampos(variaveis),
     preview: montarPreview(saida, formato),
+    // Dados para a Biblioteca copiar o texto com as datas resolvidas e os campos como [campo].
+    formato,
+    saida,
+    datas: variaveis
+      .filter((v) => v.tipo === 'date' && ehTextoNaoVazio(v.params.format))
+      .map((v) => ({ nome: v.nome, formato: v.params.format, offset: Number(v.params.offset) || 0 })),
   });
 }
 
@@ -399,6 +405,9 @@ function verificarConflitosOficiais(triggers, problemas) {
         linha: t.linha,
         regra: 'trigger-duplicado',
         mensagem: `O atalho ${t.trigger} já existe em ${onde(anterior)}. Cada atalho só pode ser definido uma vez; renomeie um deles.`,
+        // Estrutura para quem precisa saber quem conflita com quem (Biblioteca): [o primeiro, o repetido].
+        triggers: [anterior.trigger, t.trigger],
+        arquivos: [anterior.arquivo, t.arquivo],
       });
     } else {
       primeiro.set(t.trigger, t);
@@ -415,6 +424,9 @@ function verificarConflitosOficiais(triggers, problemas) {
           linha: curto.linha,
           regra: 'trigger-prefixo',
           mensagem: `O atalho ${curto.trigger} é o começo de ${longo.trigger} (${onde(longo)}): ao digitar ${longo.trigger}, o ${curto.trigger} dispara antes. Renomeie um dos dois.`,
+          // [o curto, o longo]
+          triggers: [curto.trigger, longo.trigger],
+          arquivos: [curto.arquivo, longo.arquivo],
         });
       }
     }
@@ -507,4 +519,4 @@ function validarBiblioteca(arquivos, opcoes = {}) {
   return { erros: problemas.erros, avisos: problemas.avisos, snippets: contexto.snippets };
 }
 
-module.exports = { validarBiblioteca, PADRAO_TRIGGER, TIPOS_VAR_PERMITIDOS };
+module.exports = { validarBiblioteca, htmlParaTexto, PADRAO_TRIGGER, TIPOS_VAR_PERMITIDOS };
