@@ -72,6 +72,7 @@ Observações:
 - **VERIFICADO: apagar o `base.yml` não basta.** O que impede a recriação é **existir** um `match\base.yml` nosso. Testei com um arquivo de duas linhas (`# comentário` e `matches: []`): o motor o respeitou, o log não teve erros e o `match list` mostrou só os snippets reais.
 - Portanto o `motor.preparar()` deve, **antes** de iniciar o motor: criar `config\` e `match\`; gravar o `default.yml`; e gravar um `match\base.yml` vazio (`matches: []`) no lugar do padrão, regravando-o se o conteúdo for o do Espanso. Isso cumpre o objetivo da regra do `CLAUDE.md` ("remover o base.yml padrão"), mas por substituição, não por remoção. Esse arquivo nunca entra na validação nem na biblioteca.
 - Nada foi gravado fora da pasta do motor nesses testes (`%APPDATA%\espanso` e `%LOCALAPPDATA%\espanso` não foram criadas).
+- **VERIFICADO (Marco 3):** um arquivo em `match\` **só com comentários** (sem `matches:`), como o `pessoal.yml` inicial, é aceito: nenhum WARN/ERROR no log e nenhum processo `modulo troubleshoot`.
 
 **Para os caminhos do Marco 3:** raiz do motor = `<origem>\espanso-portable`. Config = `<raiz>\.espanso`. Match = `<raiz>\.espanso\match`. Log do motor = `<raiz>\.espanso-runtime\espanso.log`.
 
