@@ -46,6 +46,8 @@ function criarCaminhos({ empacotado, resourcesPath, appPath, userData }) {
     antigoOficial: path.join(cache, 'oficial.antigo'),
     stagingCache: path.join(cache, 'ultima-valida.novo'),
     antigoCache: path.join(cache, 'ultima-valida.antigo'),
+    // Cópia local do instalador novo, conferida antes de executar (Marco 7). Apagada a cada inicialização.
+    instalador: path.join(cache, 'instalador'),
 
     // Motor em uso
     engine,

@@ -52,7 +52,11 @@ Para mudar ou apagar, selecione o atalho na lista e clique em **Editar** ou **Ex
 
 ## 5. Atualizar o programa
 
-Quando houver uma versão nova, rode o novo instalador. Ele fecha o TextCDSP, atualiza e abre de novo. Seus atalhos pessoais e as configurações são mantidos.
+Quando houver uma versão nova na pasta de snippets, o TextCDSP avisa com uma notificação ("Nova versão do TextCDSP disponível"), uma única vez por versão. Ele nunca atualiza sozinho.
+
+Para atualizar, clique na notificação ou clique com o botão direito no ícone e escolha **Instalar versão X.Y.Z**. Confirme em **Instalar agora**. O TextCDSP fecha, a versão nova é instalada e ele abre de novo. Durante esse intervalo os atalhos ficam parados. Seus atalhos pessoais e as configurações são mantidos.
+
+Se a notificação passar despercebida, o item **Instalar versão X.Y.Z** continua no menu do ícone até você atualizar.
 
 ## 6. Desinstalar
 

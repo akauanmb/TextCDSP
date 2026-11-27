@@ -346,6 +346,7 @@ function criarSincronizador({ caminhos, log, obterConfig, aoErroNovo = () => {},
 
 module.exports = {
   criarSincronizador,
+  comTempoMaximo,
   lerFonte,
   calcularHash,
   substituirPasta,

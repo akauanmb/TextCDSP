@@ -10,6 +10,7 @@
     "start": "electron .",
     "test": "node --test",
     "validar": "node scripts/validar.js",
+    "publicar": "node scripts/publicar.js",
     "baixar-espanso": "node scripts/baixar-espanso.js",
     "dist": "node scripts/baixar-espanso.js && electron-builder --win nsis"
   },

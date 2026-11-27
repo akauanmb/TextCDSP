@@ -19,7 +19,16 @@ const logFalso = () => {
 };
 
 test('os padrões são os definidos para o aplicativo', () => {
-  assert.deepEqual({ ...PADROES }, { fonteSnippets: '', intervaloSyncMin: 15, iniciarComWindows: true, modoAdmin: false });
+  assert.deepEqual({ ...PADROES }, { fonteSnippets: '', intervaloSyncMin: 15, iniciarComWindows: true, modoAdmin: false, versaoAvisada: '' });
+});
+
+test('versaoAvisada só o aplicativo grava: a janela de configurações não consegue alterá-la', (t) => {
+  assert.deepEqual(validarEntrada({ versaoAvisada: '9.9.9' }), { valor: {}, erros: [] });
+  // Mas ela sobrevive a uma gravação normal das configurações.
+  const arquivo = path.join(pastaTemporaria(t), 'config.json');
+  gravar(arquivo, { versaoAvisada: '0.1.1' });
+  gravar(arquivo, { ...ler(arquivo), intervaloSyncMin: 30 });
+  assert.equal(ler(arquivo).versaoAvisada, '0.1.1');
 });
 
 test('ler: arquivo inexistente devolve os padrões, sem aviso', (t) => {

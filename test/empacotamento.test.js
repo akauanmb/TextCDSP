@@ -22,6 +22,11 @@ test('script "dist": baixa o motor e depois gera o instalador NSIS', () => {
   assert.equal(pacote.scripts.dist, 'node scripts/baixar-espanso.js && electron-builder --win nsis');
 });
 
+test('script "publicar" (Marco 7) existe e o arquivo que ele roda também', () => {
+  assert.equal(pacote.scripts.publicar, 'node scripts/publicar.js');
+  assert.ok(fs.existsSync(path.join(raiz, 'scripts', 'publicar.js')));
+});
+
 test('identidade do aplicativo', () => {
   assert.equal(build.appId, 'textcdsp.cdsp');
   assert.equal(build.productName, 'TextCDSP');

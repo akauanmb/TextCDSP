@@ -3,19 +3,22 @@
 // Ícone da bandeja do Windows: tooltip de estado e menu. Não decide nada: chama as ações recebidas.
 
 const { Tray, Menu, nativeImage } = require('electron');
+const { rotuloInstalar } = require('../shared/versaoInstalador');
 
-function criarBandeja({ icone, aoAlternar, aoAtualizarSnippets, aoAbrirBiblioteca, aoAbrirConfiguracoes, aoAbrirPessoais, aoAbrirLogs, aoAbrirSobre, aoSair, log }) {
+function criarBandeja({ icone, aoAlternar, aoAtualizarSnippets, aoAbrirBiblioteca, aoAbrirConfiguracoes, aoAbrirPessoais, aoAbrirLogs, aoAbrirSobre, aoInstalarVersao, aoSair, log }) {
   const imagem = nativeImage.createFromPath(icone);
   if (imagem.isEmpty()) log.aviso(`Não foi possível carregar o ícone da bandeja em ${icone}`);
   const tray = new Tray(imagem);
 
   let estadoMotor = 'iniciando'; // "iniciando" | "ativo" | "pausado" | "erro"
   let textoSync = 'Sincronizando snippets...';
+  let versaoDisponivel = null; // versão nova na pasta compartilhada (Marco 7), ou null
 
   function montarMenu() {
     return Menu.buildFromTemplate([
       { label: `Status: ${estadoMotor}`, enabled: false },
       { label: textoSync, enabled: false },
+      ...(versaoDisponivel ? [{ label: rotuloInstalar(versaoDisponivel), click: aoInstalarVersao }] : []),
       { type: 'separator' },
       { label: estadoMotor === 'ativo' ? 'Pausar' : 'Retomar', enabled: estadoMotor !== 'iniciando', click: aoAlternar },
       { label: 'Atualizar snippets', click: aoAtualizarSnippets },
@@ -45,6 +48,11 @@ function criarBandeja({ icone, aoAlternar, aoAtualizarSnippets, aoAbrirBibliotec
     },
     atualizarSync(texto) {
       textoSync = texto;
+      reconstruir();
+    },
+    // `versao` = "0.2.0" quando há instalador novo; null quando não há (o item some do menu).
+    atualizarVersaoDisponivel(versao) {
+      versaoDisponivel = versao || null;
       reconstruir();
     },
     destruir: () => tray.destroy(),

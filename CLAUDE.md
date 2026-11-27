@@ -22,8 +22,8 @@ Leia este arquivo inteiro antes de qualquer tarefa. Se a tarefa contradisser alg
 
 ```
 CLAUDE.md, package.json, espanso.lock.json, .gitignore
-docs/            PLANO.md, ESPANSO-NOTAS.md
-scripts/         scripts de desenvolvimento (baixar-espanso.js, validar.js)
+docs/            PLANO.md, ESPANSO-NOTAS.md, INSTALACAO.md, PILOTO.md
+scripts/         scripts de desenvolvimento (baixar-espanso.js, validar.js, publicar.js)
 snippets/        exemplos e biblioteca inicial (YAML do Espanso)
 src/main/        processo principal do Electron (um módulo por responsabilidade)
 src/shared/      código puro, sem Electron e sem acesso a disco (ex.: validador.js)
@@ -41,6 +41,7 @@ dist/            (gitignored) saída do build
   - `config.json`: configurações.
   - `engine\`: cópia do Espanso portable em uso.
   - `cache\ultima-valida\`: última versão válida dos snippets oficiais.
+  - `cache\instalador\`: cópia temporária do instalador novo, apagada a cada inicialização.
   - `logs\app.log`.
 - Snippets oficiais em uso: `engine\<pasta de config do portable>\match\oficial\`.
 - Snippets pessoais: `...\match\pessoal.yml`.
@@ -63,6 +64,7 @@ dist/            (gitignored) saída do build
 - `npm test`: testes.
 - `npm run validar -- <pasta>`: valida uma pasta de snippets.
 - `npm run baixar-espanso`: baixa o motor para `vendor/`.
+- `npm run publicar -- <pasta-fonte>`: copia o instalador de `dist/` para `<pasta-fonte>\_instalador\` e grava o `versao.json`.
 - `npm start`: abre o app em modo desenvolvimento.
 - `npm run dist`: gera o instalador em `dist/`.
 

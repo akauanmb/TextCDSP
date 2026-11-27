@@ -11,10 +11,12 @@ const { criarLog } = require('./log');
 const configArquivo = require('./config');
 const { criarMotor } = require('./motor');
 const { criarSincronizador } = require('./sincronizacao');
+const { criarAtualizador } = require('./atualizacao');
 const { criarBandeja } = require('./bandeja');
 const { criarJanelaConfiguracoes } = require('./janelaConfiguracoes');
 const { criarJanelaBiblioteca } = require('./janelaBiblioteca');
 const { textoStatusSync } = require('../shared/statusSync');
+const { TITULO_NOTIFICACAO, corpoNotificacao } = require('../shared/versaoInstalador');
 
 const INTERVALO_VIGIA_MS = 30 * 1000;
 const NOME_DA_ENTRADA_DE_INICIO = 'TextCDSP';
@@ -78,6 +80,89 @@ function iniciarAplicativo() {
     notificacao.show();
   }
 
+  // -----------------------------------------------------------------------
+  // Nova versão do aplicativo (Marco 7): só avisa e, se a pessoa pedir, executa o instalador da pasta
+  // compartilhada. Nunca atualiza sozinho.
+  // -----------------------------------------------------------------------
+
+  let instalando = false; // uma instalação por vez
+
+  function notificarNovaVersao(info) {
+    // Lembra da versão ANTES de mostrar: se a gravação ou a notificação falharem, não repete a cada sincronização.
+    configuracao = { ...configuracao, versaoAvisada: info.versao };
+    try {
+      configuracao = configArquivo.gravar(caminhos.configJson, configuracao);
+    } catch (erro) {
+      log.erro('Não foi possível gravar a versão avisada no config.json', erro);
+    }
+    if (!Notification.isSupported()) {
+      log.aviso('Notificações não suportadas neste computador; a nova versão só aparece no menu do ícone');
+      return;
+    }
+    const notificacao = new Notification({ title: TITULO_NOTIFICACAO, body: corpoNotificacao(info) });
+    notificacoesAbertas.add(notificacao);
+    notificacao.on('click', () => pedirInstalacao().catch((erro) => log.erro('Falha ao instalar a nova versão', erro)));
+    notificacao.on('close', () => notificacoesAbertas.delete(notificacao));
+    notificacao.on('failed', (_evento, erro) => {
+      log.aviso(`O Windows não mostrou a notificação de nova versão: ${erro}`);
+      notificacoesAbertas.delete(notificacao);
+    });
+    notificacao.show();
+  }
+
+  const atualizador = criarAtualizador({
+    caminhos,
+    log,
+    obterFonte: () => configuracao.fonteSnippets,
+    versaoAtual: app.getVersion(),
+    obterVersaoAvisada: () => configuracao.versaoAvisada,
+    aoMudar: (disponivel) => {
+      if (bandeja) bandeja.atualizarVersaoDisponivel(disponivel ? disponivel.versao : null);
+    },
+    aoNovaVersao: notificarNovaVersao,
+  });
+
+  // Confirma, copia e confere o instalador, executa-o e encerra o app (o instalador fecha e reabre o TextCDSP).
+  async function pedirInstalacao() {
+    if (instalando || encerrando) return;
+    const nova = atualizador.disponivel();
+    if (!nova) {
+      await dialog.showMessageBox({ type: 'info', title: 'TextCDSP', message: 'Não há nova versão disponível.', buttons: ['OK'] });
+      return;
+    }
+    instalando = true;
+    try {
+      const escolha = await dialog.showMessageBox({
+        type: 'question',
+        title: 'TextCDSP',
+        message: `Instalar o TextCDSP ${nova.versao}?`,
+        detail: [nova.notas, 'O TextCDSP será fechado durante a instalação e abrirá de novo ao final. Os atalhos ficam parados nesse intervalo.'].filter(Boolean).join('\n\n'),
+        buttons: ['Instalar agora', 'Agora não'],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true,
+      });
+      if (escolha.response !== 0) return;
+      const preparo = await atualizador.prepararInstalacao();
+      if (!preparo.ok) {
+        dialog.showErrorBox('TextCDSP', preparo.mensagem);
+        return;
+      }
+      const erro = await shell.openPath(preparo.caminho);
+      if (erro) {
+        log.erro(`Não foi possível executar o instalador (${preparo.caminho}): ${erro}`);
+        dialog.showErrorBox('TextCDSP', 'Não foi possível executar o instalador da nova versão.');
+        return;
+      }
+      log.info(`Instalador da versão ${preparo.versao} iniciado; encerrando o TextCDSP para a atualização`);
+      app.quit();
+    } finally {
+      instalando = false;
+    }
+  }
+
+  const verificarAtualizacao = () => atualizador.verificar().catch((erro) => log.erro('Falha ao verificar a nova versão', erro));
+
   const sincronizador = criarSincronizador({
     caminhos,
     log,
@@ -87,6 +172,8 @@ function iniciarAplicativo() {
       const texto = textoStatusSync(resultado);
       log.info(`Menu: ${texto}`);
       if (bandeja) bandeja.atualizarSync(texto);
+      // A cada sincronização, confere se a pasta tem um instalador mais novo (independe de a pasta ter erro de snippets).
+      verificarAtualizacao();
       // Uma versão nova dos snippets oficiais foi aplicada: a Biblioteca aberta relê a lista.
       if (resultado.aplicadoEm !== ultimoAplicadoEm) {
         ultimoAplicadoEm = resultado.aplicadoEm;
@@ -324,9 +411,13 @@ function iniciarAplicativo() {
       aoAbrirPessoais: () => abrir(caminhos.pessoalYml, 'o arquivo de atalhos pessoais'),
       aoAbrirLogs: () => abrir(caminhos.logs, 'a pasta de logs'),
       aoAbrirSobre: () => mostrarSobre().catch((erro) => log.erro('Falha ao mostrar o Sobre', erro)),
+      aoInstalarVersao: () => pedirInstalacao().catch((erro) => log.erro('Falha ao instalar a nova versão', erro)),
       aoSair: () => app.quit(),
     });
     bandeja.atualizarSync(textoStatusSync(sincronizador.estadoAtual()));
+    atualizador.limparInstaladorLocal(); // sobra de uma atualização anterior
+    const jaDisponivel = atualizador.disponivel();
+    if (jaDisponivel) bandeja.atualizarVersaoDisponivel(jaDisponivel.versao);
 
     // Primeira execução: sem pasta configurada, abre as configurações.
     if (!configuracao.fonteSnippets) janelaConfig.abrir();

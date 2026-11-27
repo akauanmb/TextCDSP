@@ -11,6 +11,8 @@ const PADROES = Object.freeze({
   intervaloSyncMin: 15,
   iniciarComWindows: true,
   modoAdmin: false,
+  // Última versão nova da qual o usuário já foi avisado (Marco 7). Só o app grava; a janela não altera.
+  versaoAvisada: '',
 });
 
 // Lê o arquivo e mescla com os padrões, para que chaves novas apareçam sozinhas.
