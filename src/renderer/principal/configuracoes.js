@@ -1,22 +1,22 @@
 'use strict';
 
-// Lógica da janela de configurações. Só fala com o processo principal pelo objeto
+// Seção Configurações da janela principal. Só fala com o processo principal pelo objeto
 // window.textcdsp (preload). Todo texto vindo de fora entra na página por textContent.
 
 (function () {
-  const api = window.textcdsp;
-  const $ = (id) => document.getElementById(id);
+  const { api, $, aoEstado } = window.CDSPComum;
 
   const campos = {
     fonte: $('fonte'),
     intervalo: $('intervalo'),
     iniciarWindows: $('iniciar-windows'),
+    minimizarIcone: $('minimizar-icone'),
     modoAdmin: $('modo-admin'),
   };
   const botoes = {
     escolher: $('escolher'),
     testar: $('testar'),
-    salvar: $('salvar'),
+    salvar: $('config-salvar'),
     fechar: $('fechar'),
     sincronizar: $('sincronizar'),
   };
@@ -31,9 +31,9 @@
   }
 
   function definirMensagem(texto, tipo) {
-    const el = $('mensagem');
-    el.textContent = texto || '';
-    el.className = tipo || '';
+    const caixa = $('config-mensagem');
+    caixa.textContent = texto || '';
+    caixa.className = tipo || '';
   }
 
   function onde(problema) {
@@ -89,14 +89,6 @@
     preencherLista($('lista-avisos'), $('titulo-avisos'), avisos, 'Avisos');
   }
 
-  async function atualizarEstado() {
-    try {
-      mostrarEstado(await api.estadoSync());
-    } catch {
-      // a janela pode estar fechando
-    }
-  }
-
   function mostrarTeste(resultado) {
     const caixa = $('resultado-teste');
     caixa.hidden = false;
@@ -135,6 +127,7 @@
     campos.fonte.value = config.fonteSnippets || '';
     campos.intervalo.value = config.intervaloSyncMin;
     campos.iniciarWindows.checked = Boolean(config.iniciarComWindows);
+    campos.minimizarIcone.checked = config.minimizarParaIcone !== false;
     campos.modoAdmin.checked = Boolean(config.modoAdmin);
   }
 
@@ -162,6 +155,7 @@
         fonteSnippets: campos.fonte.value,
         intervaloSyncMin: campos.intervalo.value,
         iniciarComWindows: campos.iniciarWindows.checked,
+        minimizarParaIcone: campos.minimizarIcone.checked,
         modoAdmin: campos.modoAdmin.checked,
       });
       if (!resposta.ok) {
@@ -182,14 +176,11 @@
 
   botoes.fechar.addEventListener('click', () => window.close());
 
-  async function iniciar() {
-    preencherCampos(await api.lerConfig());
-    await atualizarEstado();
-    // Mantém a "Situação" em dia enquanto a janela está aberta (o app sincroniza sozinho a cada ciclo).
-    setInterval(() => {
-      if (!ocupado) atualizarEstado();
-    }, 3000);
-  }
+  // Mantém a "Situação" em dia: principal.js consulta o estado de tempos em tempos e avisa as seções.
+  // Durante uma operação desta seção (testar, salvar, sincronizar), a própria operação mostra o resultado.
+  aoEstado((estado) => {
+    if (!ocupado) mostrarEstado(estado);
+  });
 
-  iniciar();
+  api.lerConfig().then(preencherCampos).catch(() => {});
 })();

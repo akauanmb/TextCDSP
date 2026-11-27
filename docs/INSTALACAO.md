@@ -16,7 +16,7 @@ Isso acontece porque o instalador ainda não tem assinatura digital. Se o arquiv
 
 ### Onde fica o ícone
 
-Procure um quadrado azul com **TC** perto do relógio. Se não aparecer, clique na seta **^** (ícones ocultos). Para deixá-lo sempre à vista, arraste-o para a barra.
+Procure o ícone azul do TextCDSP (um escudo com uma cruz) perto do relógio. Se não aparecer, clique na seta **^** (ícones ocultos). Para deixá-lo sempre à vista, arraste-o para a barra.
 
 Passe o mouse sobre o ícone: deve aparecer **TextCDSP - ativo**.
 
@@ -24,7 +24,7 @@ Passe o mouse sobre o ícone: deve aparecer **TextCDSP - ativo**.
 
 ## 2. Configurar a pasta de snippets (só na primeira vez)
 
-A janela **Configurações** abre sozinha. Se não abrir, clique com o botão direito no ícone e escolha **Configurações...**.
+A janela do TextCDSP abre sozinha, já na seção **Configurações** (o menu lateral à esquerda). Se não abrir, clique com o botão direito no ícone da bandeja e escolha **Configurações...**.
 
 1. Clique em **Escolher...** e selecione a pasta compartilhada com os snippets da CDSP (o setor informa qual é).
 2. Clique em **Testar**. Deve aparecer algo como "6 snippets, 0 erros".
@@ -35,11 +35,24 @@ Em poucos segundos o menu do ícone mostra **Snippets atualizados**. Depois diss
 ## 3. Usar
 
 - Digite o atalho (por exemplo, `/hoje`) em qualquer lugar onde você escreve.
-- Para ver todos os atalhos, dê **dois cliques no ícone**. A janela **Biblioteca** mostra os atalhos em pastas que abrem e fecham (clique, ou use as setas do teclado: para a direita abre, para a esquerda fecha). Ao digitar na busca, a lista mostra os resultados com o caminho de cada um, e buscar o nome de uma pasta encontra os atalhos dela. Há botões para copiar o atalho ou o texto.
+- Para ver todos os atalhos, dê **dois cliques no ícone da bandeja**, ou escolha **Abrir biblioteca** no menu dele. A seção **Biblioteca** da janela do TextCDSP mostra os atalhos em pastas que abrem e fecham (clique, ou use as setas do teclado: para a direita abre, para a esquerda fecha). Ao digitar na busca, a lista mostra os resultados com o caminho de cada um, e buscar o nome de uma pasta encontra os atalhos dela. Há botões para copiar o atalho ou o texto.
+
+### A janela do TextCDSP e o ícone flutuante
+
+A **Biblioteca** e as **Configurações** ficam numa só janela, com um menu à esquerda para trocar de uma para a outra. Trocar de seção não perde o que você estava digitando.
+
+Ao **minimizar** a janela (o botão da barra de título, o botão **Minimizar para ícone** no fim do menu, ou a tecla **Esc**), ela some e aparece um **ícone pequeno e redondo**, sempre à vista, no canto da tela:
+
+- **Clique** no ícone para abrir a janela de novo, na seção em que ela estava.
+- **Arraste** o ícone para onde quiser. O programa lembra o lugar. Ele não tira o cursor do programa em que você está escrevendo.
+- **Botão direito** no ícone: **Abrir TextCDSP** ou **Esconder ícone**. Com o ícone escondido, a janela continua acessível pelo ícone da bandeja.
+- Para a janela minimizar para a barra de tarefas como qualquer outra, desmarque **Ao minimizar, transformar a janela num ícone flutuante** em **Configurações**.
+- O botão **X** da janela só a fecha: o programa continua na bandeja e o ícone flutuante não aparece.
+- Abrir o TextCDSP de novo pelo menu Iniciar, com ele já rodando, traz a janela para a frente.
 
 ## 4. Criar um atalho pessoal
 
-1. Abra a Biblioteca e clique em **Novo atalho pessoal**.
+1. Abra a seção **Biblioteca** e clique em **Novo atalho pessoal**.
 2. Preencha:
    - **Atalho:** por exemplo, `/ola` ou `;ola`. Começa com um destes caracteres: `/` `;` `!` `#` `=` `+`, seguido de 2 a 30 letras minúsculas (sem acento) ou números. Se você digitar só `ola`, o programa acrescenta o `/`.
    - **Nome:** como o atalho aparece na lista.

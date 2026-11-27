@@ -16,7 +16,7 @@ Leia este arquivo inteiro antes de qualquer tarefa. Se a tarefa contradisser alg
 - **Instalador:** electron-builder, alvo NSIS, por usuário e sem administrador.
 - **Snippets:** arquivos YAML no formato do Espanso.
   - Os snippets oficiais vêm de uma pasta-fonte compartilhada, com subpastas de até 3 níveis (a Biblioteca as mostra como árvore). Pastas e arquivos iniciados por `_` (e pastas iniciadas por `.`) são ignorados.
-  - Os pessoais ficam em `pessoal.yml`. Só o próprio usuário altera esse arquivo, à mão ou pela janela Biblioteca (texto simples). A sincronização e as atualizações do app nunca o sobrescrevem.
+  - Os pessoais ficam em `pessoal.yml`. Só o próprio usuário altera esse arquivo, à mão ou pela seção Biblioteca da janela principal (texto simples). A sincronização e as atualizações do app nunca o sobrescrevem.
 
 ## Estrutura de pastas
 
@@ -64,6 +64,7 @@ dist/            (gitignored) saída do build
 - `npm test`: testes.
 - `npm run validar -- <pasta>`: valida uma pasta de snippets.
 - `npm run baixar-espanso`: baixa o motor para `vendor/`.
+- `npx electron scripts/gerar-icone.js`: refaz `assets/icone.ico` a partir de `assets/icon16.png`, `icon48.png` e `icon128.png` (o ícone do programa).
 - `npm run publicar -- <pasta-fonte>`: copia o instalador de `dist/` para `<pasta-fonte>\_instalador\` e grava o `versao.json`.
 - `npm start`: abre o app em modo desenvolvimento.
 - `npm run dist`: gera o instalador em `dist/`.

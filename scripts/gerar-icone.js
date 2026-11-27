@@ -1,117 +1,21 @@
 'use strict';
 
-// Gera assets/icone.ico (letras "TC" brancas sobre fundo azul, 16/32/256 px).
-// Uso: node scripts/gerar-icone.js
-// Sem dependências: o PNG é montado com zlib e o .ico guarda um PNG por tamanho.
+// Monta assets/icone.ico (bandeja, janelas e instalador) a partir das imagens do ícone do programa:
+//   assets/icon16.png, assets/icon48.png, assets/icon128.png   (fornecidas; entram no .ico sem alteração)
+// e gera os tamanhos que faltam por redimensionamento (32 e 256 px; o electron-builder exige o de 256).
+// O ícone flutuante (Marco 11) usa assets/icon128.png direto, mostrado em 48 px.
+//
+// Uso:  npx electron scripts/gerar-icone.js
+// Roda dentro do Electron só para usar o redimensionador de imagens dele (nativeImage); não abre janela.
+// Para trocar o ícone: substitua os três PNGs e rode de novo. Quanto maior o icon128.png, mais nítido fica o de 256.
 
+const { app, nativeImage } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
-const zlib = require('node:zlib');
 
-const TAMANHOS = [16, 32, 256];
-const AMOSTRAS = 4; // 4x4 subpixels por pixel, para suavizar as bordas
-const AZUL = [31, 78, 121];
-const BRANCO = [255, 255, 255];
-
-// Formas em coordenadas de 0 a 1.
-function dentroDoFundo(x, y) {
-  const raio = 0.2;
-  const cx = Math.min(Math.max(x, raio), 1 - raio);
-  const cy = Math.min(Math.max(y, raio), 1 - raio);
-  return Math.hypot(x - cx, y - cy) <= raio;
-}
-
-function dentroDaLetra(x, y) {
-  // T: barra no alto e haste no meio.
-  const barraT = x >= 0.08 && x <= 0.42 && y >= 0.28 && y <= 0.37;
-  const hasteT = x >= 0.205 && x <= 0.295 && y >= 0.28 && y <= 0.72;
-  if (barraT || hasteT) return true;
-  // C: anel com abertura de 40 graus para cada lado, à direita.
-  const dx = x - 0.68;
-  const dy = y - 0.5;
-  const d = Math.hypot(dx, dy);
-  if (d < 0.13 || d > 0.22) return false;
-  const anguloAbertura = (40 * Math.PI) / 180;
-  return !(dx > 0 && Math.abs(Math.atan2(dy, dx)) < anguloAbertura);
-}
-
-function desenhar(tamanho) {
-  const rgba = Buffer.alloc(tamanho * tamanho * 4);
-  const total = AMOSTRAS * AMOSTRAS;
-  for (let py = 0; py < tamanho; py++) {
-    for (let px = 0; px < tamanho; px++) {
-      let r = 0;
-      let g = 0;
-      let b = 0;
-      let a = 0;
-      for (let sy = 0; sy < AMOSTRAS; sy++) {
-        for (let sx = 0; sx < AMOSTRAS; sx++) {
-          const x = (px + (sx + 0.5) / AMOSTRAS) / tamanho;
-          const y = (py + (sy + 0.5) / AMOSTRAS) / tamanho;
-          if (!dentroDoFundo(x, y)) continue;
-          const cor = dentroDaLetra(x, y) ? BRANCO : AZUL;
-          r += cor[0];
-          g += cor[1];
-          b += cor[2];
-          a += 1;
-        }
-      }
-      const i = (py * tamanho + px) * 4;
-      if (a > 0) {
-        rgba[i] = Math.round(r / a);
-        rgba[i + 1] = Math.round(g / a);
-        rgba[i + 2] = Math.round(b / a);
-        rgba[i + 3] = Math.round((255 * a) / total);
-      }
-    }
-  }
-  return rgba;
-}
-
-const TABELA_CRC = (() => {
-  const tabela = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    tabela[n] = c >>> 0;
-  }
-  return tabela;
-})();
-
-function crc32(buffer) {
-  let c = 0xffffffff;
-  for (const byte of buffer) c = TABELA_CRC[(c ^ byte) & 0xff] ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-}
-
-function bloco(tipo, dados) {
-  const tamanho = Buffer.alloc(4);
-  tamanho.writeUInt32BE(dados.length);
-  const corpo = Buffer.concat([Buffer.from(tipo, 'ascii'), dados]);
-  const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(corpo));
-  return Buffer.concat([tamanho, corpo, crc]);
-}
-
-function codificarPng(tamanho, rgba) {
-  const cabecalho = Buffer.alloc(13);
-  cabecalho.writeUInt32BE(tamanho, 0);
-  cabecalho.writeUInt32BE(tamanho, 4);
-  cabecalho[8] = 8; // 8 bits por canal
-  cabecalho[9] = 6; // RGBA
-  const linhas = Buffer.alloc(tamanho * (tamanho * 4 + 1));
-  for (let y = 0; y < tamanho; y++) {
-    const inicio = y * (tamanho * 4 + 1);
-    linhas[inicio] = 0; // sem filtro
-    rgba.copy(linhas, inicio + 1, y * tamanho * 4, (y + 1) * tamanho * 4);
-  }
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    bloco('IHDR', cabecalho),
-    bloco('IDAT', zlib.deflateSync(linhas, { level: 9 })),
-    bloco('IEND', Buffer.alloc(0)),
-  ]);
-}
+const ASSETS = path.resolve(__dirname, '..', 'assets');
+const FORNECIDOS = [16, 48, 128];
+const GERADOS = [32, 256];
 
 function montarIco(imagens) {
   const cabecalho = Buffer.alloc(6);
@@ -134,8 +38,34 @@ function montarIco(imagens) {
   return Buffer.concat([cabecalho, ...entradas, ...imagens.map((i) => i.png)]);
 }
 
-const imagens = TAMANHOS.map((tamanho) => ({ tamanho, png: codificarPng(tamanho, desenhar(tamanho)) }));
-const destino = path.resolve(__dirname, '..', 'assets', 'icone.ico');
-fs.mkdirSync(path.dirname(destino), { recursive: true });
-fs.writeFileSync(destino, montarIco(imagens));
-console.log(`Ícone gerado em ${destino} (${TAMANHOS.join(', ')} px).`);
+function principal() {
+  const imagens = [];
+  for (const tamanho of FORNECIDOS) {
+    const arquivo = path.join(ASSETS, `icon${tamanho}.png`);
+    const imagem = nativeImage.createFromPath(arquivo);
+    const medida = imagem.getSize();
+    if (imagem.isEmpty() || medida.width !== tamanho || medida.height !== tamanho) {
+      throw new Error(`${arquivo} precisa existir e ter ${tamanho}x${tamanho} px.`);
+    }
+    imagens.push({ tamanho, png: fs.readFileSync(arquivo) });
+  }
+  const maior = nativeImage.createFromPath(path.join(ASSETS, 'icon128.png'));
+  for (const tamanho of GERADOS) {
+    imagens.push({ tamanho, png: maior.resize({ width: tamanho, height: tamanho, quality: 'best' }).toPNG() });
+  }
+  imagens.sort((a, b) => a.tamanho - b.tamanho);
+
+  const destino = path.join(ASSETS, 'icone.ico');
+  fs.writeFileSync(destino, montarIco(imagens));
+  console.log(`Ícone gerado em ${destino} (${imagens.map((i) => i.tamanho).join(', ')} px).`);
+}
+
+app.whenReady().then(() => {
+  try {
+    principal();
+    app.exit(0);
+  } catch (erro) {
+    console.error(erro.message);
+    app.exit(1);
+  }
+});

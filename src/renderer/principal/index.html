@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; script-src 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TextCDSP</title>
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <nav class="menu" aria-label="Menu principal">
+    <p class="marca">TextCDSP</p>
+    <button id="menu-biblioteca" type="button" class="item-menu" data-secao="biblioteca">Biblioteca</button>
+    <button id="menu-configuracoes" type="button" class="item-menu" data-secao="configuracoes">Configurações</button>
+    <div class="menu-rodape">
+      <p id="status-sync" class="status-menu" role="status" aria-live="polite"></p>
+      <button id="minimizar" type="button">Minimizar para ícone</button>
+    </div>
+  </nav>
+
+  <div class="conteudo">
+    <!-- As seções são só escondidas e mostradas, nunca recriadas: trocar de seção não perde o que foi digitado. -->
+    <div id="secao-biblioteca" class="secao">
+      <div id="faixa-arquivo" class="faixa" role="alert" hidden>
+        <span id="faixa-arquivo-texto"></span>
+        <button id="faixa-arquivo-abrir" type="button">Abrir arquivo</button>
+      </div>
+
+      <div class="app">
+        <aside class="lateral" aria-label="Lista de snippets">
+          <div class="busca">
+            <input id="busca" type="search" spellcheck="false" autocomplete="off" placeholder="Buscar atalho, nome, pasta ou texto (Ctrl+F)" aria-label="Buscar snippets">
+          </div>
+          <button id="novo" type="button" class="principal">Novo atalho pessoal</button>
+          <ul id="lista" role="tree" aria-label="Snippets"></ul>
+        </aside>
+
+        <main id="painel" class="painel" aria-live="polite"></main>
+      </div>
+
+      <footer id="rodape" class="rodape"></footer>
+    </div>
+
+    <div id="secao-configuracoes" class="secao" hidden>
+      <div class="config">
+        <h1>Configurações do TextCDSP</h1>
+
+        <section class="cartao" aria-labelledby="titulo-pasta">
+          <h2 id="titulo-pasta">Pasta de snippets oficiais</h2>
+          <p class="ajuda">Pasta compartilhada com os arquivos <code>.yml</code> da CDSP (por exemplo, no Google Drive para computador ou em uma pasta de rede). Pode ter subpastas de até 3 níveis.</p>
+          <div class="linha">
+            <input id="fonte" type="text" spellcheck="false" placeholder="Ex.: G:\Drives compartilhados\CDSP\snippets" aria-label="Pasta de snippets oficiais">
+            <button id="escolher" type="button">Escolher...</button>
+            <button id="testar" type="button">Testar</button>
+          </div>
+          <div id="resultado-teste" class="caixa" hidden></div>
+        </section>
+
+        <section class="cartao" aria-labelledby="titulo-opcoes">
+          <h2 id="titulo-opcoes">Opções</h2>
+          <div class="campo-linha">
+            <label for="intervalo">Verificar a pasta a cada</label>
+            <input id="intervalo" type="number" min="5" max="120" step="1" inputmode="numeric">
+            <span>minutos (de 5 a 120)</span>
+          </div>
+          <label class="opcao"><input id="iniciar-windows" type="checkbox"> Iniciar com o Windows</label>
+          <label class="opcao"><input id="minimizar-icone" type="checkbox"> Ao minimizar, transformar a janela num ícone flutuante</label>
+          <label class="opcao"><input id="modo-admin" type="checkbox"> Modo administrador</label>
+          <p class="ajuda">O modo administrador ainda não tem efeito: por enquanto só é guardado.</p>
+        </section>
+
+        <div class="acoes-config">
+          <button id="config-salvar" type="button" class="principal">Salvar</button>
+          <button id="fechar" type="button">Fechar janela</button>
+          <span id="config-mensagem" role="status" aria-live="polite"></span>
+        </div>
+
+        <section class="cartao" aria-labelledby="titulo-situacao">
+          <h2 id="titulo-situacao">Situação</h2>
+          <p id="status-texto" class="status"></p>
+          <dl>
+            <dt>Última atualização</dt><dd id="ultima-atualizacao">-</dd>
+            <dt>Última verificação</dt><dd id="ultima-verificacao">-</dd>
+            <dt>Snippets oficiais</dt><dd id="total-snippets">-</dd>
+          </dl>
+          <p id="status-mensagem" class="ajuda" hidden></p>
+          <div class="linha">
+            <button id="sincronizar" type="button">Sincronizar agora</button>
+          </div>
+          <div id="problemas" hidden>
+            <h3 id="titulo-erros" hidden></h3>
+            <ul id="lista-erros" class="problemas erros"></ul>
+            <h3 id="titulo-avisos" hidden></h3>
+            <ul id="lista-avisos" class="problemas avisos"></ul>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../shared/busca.js"></script>
+  <script src="../../shared/arvore.js"></script>
+  <script src="comum.js"></script>
+  <script src="biblioteca.js"></script>
+  <script src="configuracoes.js"></script>
+  <script src="principal.js"></script>
+</body>
+</html>

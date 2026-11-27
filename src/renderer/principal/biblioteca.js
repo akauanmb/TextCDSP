@@ -1,13 +1,12 @@
 'use strict';
 
-// Lógica da janela Biblioteca. Só fala com o processo principal pelo objeto window.textcdsp (preload).
+// Seção Biblioteca da janela principal. Só fala com o processo principal pelo objeto window.textcdsp (preload).
 // Todo texto vindo de fora entra na página por textContent (nunca como HTML).
 
 (function () {
-  const api = window.textcdsp;
+  const { api, $, el, irParaSecao, secaoAtiva } = window.CDSPComum;
   const { filtrarSnippets } = window.CDSPBusca;
   const { montarArvore, linhasVisiveis, chavesDosAncestrais, chaveDe, caminhoDoSnippet, SEPARADOR } = window.CDSPArvore;
-  const $ = (id) => document.getElementById(id);
 
   const ROTULO_TIPO = {
     texto: 'Texto',
@@ -43,26 +42,6 @@
   let formulario = null; // { modo: "criar"|"editar", triggerOriginal, valores, erros, arquivoInvalido }
   let confirmandoExclusao = false;
   let mensagem = { texto: '', tipo: '' };
-
-  // ---------------------------------------------------------------------
-  // Construção de elementos
-  // ---------------------------------------------------------------------
-
-  function el(tag, atributos, ...filhos) {
-    const e = document.createElement(tag);
-    for (const [chave, valor] of Object.entries(atributos || {})) {
-      if (valor === false || valor === null || valor === undefined) continue;
-      if (chave === 'classe') e.className = valor;
-      else if (chave === 'texto') e.textContent = valor;
-      else if (chave === 'aoClicar') e.addEventListener('click', valor);
-      else e.setAttribute(chave, valor === true ? '' : valor);
-    }
-    for (const filho of filhos.flat()) {
-      if (filho === null || filho === undefined || filho === false) continue;
-      e.append(typeof filho === 'object' ? filho : document.createTextNode(String(filho)));
-    }
-    return e;
-  }
 
   // Troca o conteúdo do painel. Aceita listas e ignora vazios (replaceChildren transformaria null em "null").
   function mostrarNoPainel(...nos) {
@@ -508,20 +487,26 @@
     const alvo = evento.target;
     const tag = alvo && alvo.tagName;
 
+    // Ctrl+F vale em qualquer seção: leva para a Biblioteca e foca a busca.
     if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === 'f') {
       evento.preventDefault();
+      irParaSecao('biblioteca');
       $('busca').focus();
       $('busca').select();
       return;
     }
 
+    // As demais teclas só valem com a Biblioteca à vista (as Configurações têm campos próprios).
+    if (secaoAtiva() !== 'biblioteca') return;
+
+    // Esc: fecha o formulário ou a confirmação aberta; se não houver nada, minimiza a janela (Marco 11).
     if (evento.key === 'Escape') {
       evento.preventDefault();
       if (formulario) cancelarFormulario();
       else if (confirmandoExclusao) {
         confirmandoExclusao = false;
         renderPainel();
-      } else window.close();
+      } else window.CDSPComum.minimizar();
       return;
     }
 

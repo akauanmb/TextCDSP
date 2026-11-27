@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { PADROES, ler, gravar, validarEntrada } = require('../src/main/config');
+const { PADROES, ler, gravar, validarEntrada, normalizarPosicao } = require('../src/main/config');
 
 function pastaTemporaria(t) {
   const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'textcdsp-config-'));
@@ -19,7 +19,73 @@ const logFalso = () => {
 };
 
 test('os padrões são os definidos para o aplicativo', () => {
-  assert.deepEqual({ ...PADROES }, { fonteSnippets: '', intervaloSyncMin: 15, iniciarComWindows: true, modoAdmin: false, versaoAvisada: '' });
+  assert.deepEqual({ ...PADROES }, {
+    fonteSnippets: '',
+    intervaloSyncMin: 15,
+    iniciarComWindows: true,
+    modoAdmin: false,
+    versaoAvisada: '',
+    minimizarParaIcone: true,
+    posicaoIcone: null,
+  });
+});
+
+// Marco 11: minimizarParaIcone e posicaoIcone
+
+test('minimizarParaIcone: padrão true; a janela de configurações pode ligar e desligar; só aceita booleano', () => {
+  assert.equal(PADROES.minimizarParaIcone, true);
+  assert.deepEqual(validarEntrada({ minimizarParaIcone: false }), { valor: { minimizarParaIcone: false }, erros: [] });
+  assert.deepEqual(validarEntrada({ minimizarParaIcone: true }), { valor: { minimizarParaIcone: true }, erros: [] });
+  for (const ruim of ['false', 0, 1, null, 'sim']) {
+    const { valor, erros } = validarEntrada({ minimizarParaIcone: ruim });
+    assert.deepEqual(valor, {}, String(ruim));
+    assert.equal(erros.length, 1, String(ruim));
+  }
+});
+
+test('posicaoIcone: só o aplicativo grava; a janela de configurações não consegue alterá-la', () => {
+  assert.deepEqual(validarEntrada({ posicaoIcone: { x: 1, y: 2 } }), { valor: {}, erros: [] });
+});
+
+test('normalizarPosicao: só { x, y } com inteiros; o resto vira null', () => {
+  assert.deepEqual(normalizarPosicao({ x: 10, y: -20 }), { x: 10, y: -20 });
+  assert.deepEqual(normalizarPosicao({ x: 10, y: 20, extra: 1 }), { x: 10, y: 20 });
+  for (const ruim of [null, undefined, 'x', 5, [], [1, 2], {}, { x: 1 }, { x: 1.5, y: 2 }, { x: '1', y: 2 }, { x: NaN, y: 1 }, { x: Infinity, y: 1 }]) {
+    assert.equal(normalizarPosicao(ruim), null, JSON.stringify(ruim));
+  }
+});
+
+test('ler: posição e opção do ícone são gravadas e lidas de volta, e valores inválidos viram o padrão', (t) => {
+  const arquivo = path.join(pastaTemporaria(t), 'config.json');
+  gravar(arquivo, { minimizarParaIcone: false, posicaoIcone: { x: 100, y: 200 } });
+  const lida = ler(arquivo);
+  assert.equal(lida.minimizarParaIcone, false);
+  assert.deepEqual(lida.posicaoIcone, { x: 100, y: 200 });
+
+  fs.writeFileSync(arquivo, JSON.stringify({ minimizarParaIcone: 'talvez', posicaoIcone: { x: 'a', y: 2 } }));
+  const ruim = ler(arquivo);
+  assert.equal(ruim.minimizarParaIcone, true); // padrão
+  assert.equal(ruim.posicaoIcone, null);
+
+  fs.writeFileSync(arquivo, JSON.stringify({ iniciarComWindows: false }));
+  assert.equal(ler(arquivo).minimizarParaIcone, true); // chave ausente: padrão
+});
+
+test('gravar: valores inválidos das chaves novas não chegam ao arquivo', (t) => {
+  const arquivo = path.join(pastaTemporaria(t), 'config.json');
+  gravar(arquivo, { minimizarParaIcone: 'x', posicaoIcone: { x: 1.5, y: 2 } });
+  const crua = JSON.parse(fs.readFileSync(arquivo, 'utf8'));
+  assert.equal(crua.minimizarParaIcone, true);
+  assert.equal(crua.posicaoIcone, null);
+});
+
+test('guardar a posição do ícone não apaga as outras configurações, e salvar as configurações não apaga a posição', (t) => {
+  const arquivo = path.join(pastaTemporaria(t), 'config.json');
+  gravar(arquivo, { fonteSnippets: 'G:\\CDSP', intervaloSyncMin: 30 });
+  gravar(arquivo, { ...ler(arquivo), posicaoIcone: { x: 5, y: 6 } });
+  assert.equal(ler(arquivo).fonteSnippets, 'G:\\CDSP');
+  gravar(arquivo, { ...ler(arquivo), intervaloSyncMin: 60 });
+  assert.deepEqual(ler(arquivo).posicaoIcone, { x: 5, y: 6 });
 });
 
 test('versaoAvisada só o aplicativo grava: a janela de configurações não consegue alterá-la', (t) => {

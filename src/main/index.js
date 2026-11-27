@@ -1,7 +1,8 @@
 'use strict';
 
 // Processo principal do TextCDSP: ícone na bandeja controlando o motor (Espanso portable),
-// sincronizando os snippets oficiais da pasta compartilhada e abrindo a janela de configurações.
+// sincronizando os snippets oficiais da pasta compartilhada e abrindo a janela principal (Biblioteca e
+// Configurações), que minimizada vira um ícone flutuante.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -13,8 +14,8 @@ const { criarMotor } = require('./motor');
 const { criarSincronizador } = require('./sincronizacao');
 const { criarAtualizador } = require('./atualizacao');
 const { criarBandeja } = require('./bandeja');
-const { criarJanelaConfiguracoes } = require('./janelaConfiguracoes');
-const { criarJanelaBiblioteca } = require('./janelaBiblioteca');
+const { criarJanelaPrincipal } = require('./janelaPrincipal');
+const { criarIconeFlutuante } = require('./iconeFlutuante');
 const { textoStatusSync } = require('../shared/statusSync');
 const { TITULO_NOTIFICACAO, corpoNotificacao } = require('../shared/versaoInstalador');
 
@@ -45,8 +46,8 @@ function iniciarAplicativo() {
 
   let configuracao = configArquivo.ler(caminhos.configJson, log);
   let bandeja = null;
-  let janelaConfig = null;
-  let janelaBiblioteca = null;
+  let janelaPrincipal = null;
+  let iconeFlutuante = null;
   let ultimoAplicadoEm = null; // para avisar a Biblioteca só quando uma versão nova foi aplicada
   let estado = 'iniciando'; // "iniciando" | "ativo" | "pausado" | "erro"
   let bloqueadoPorOutroEspanso = false;
@@ -71,7 +72,7 @@ function iniciarAplicativo() {
       body: `A pasta tem ${erros.length} erro(s) e não foi aplicada. Os atalhos continuam na última versão válida. Clique para ver os detalhes.`,
     });
     notificacoesAbertas.add(notificacao);
-    notificacao.on('click', () => janelaConfig.abrir());
+    notificacao.on('click', () => janelaPrincipal.abrir('configuracoes'));
     notificacao.on('close', () => notificacoesAbertas.delete(notificacao));
     notificacao.on('failed', (_evento, erro) => {
       log.aviso(`O Windows não mostrou a notificação: ${erro}`);
@@ -177,7 +178,7 @@ function iniciarAplicativo() {
       // Uma versão nova dos snippets oficiais foi aplicada: a Biblioteca aberta relê a lista.
       if (resultado.aplicadoEm !== ultimoAplicadoEm) {
         ultimoAplicadoEm = resultado.aplicadoEm;
-        if (janelaBiblioteca) janelaBiblioteca.notificarMudanca();
+        if (janelaPrincipal) janelaPrincipal.notificarMudanca();
       }
     },
   });
@@ -225,18 +226,35 @@ function iniciarAplicativo() {
     return { ok: true, config: configuracao };
   }
 
-  janelaConfig = criarJanelaConfiguracoes({
+  // Só a posição do ícone flutuante: grava no config.json sem passar por salvarConfiguracao (não sincroniza).
+  function guardarPosicaoDoIcone(posicao) {
+    configuracao = { ...configuracao, posicaoIcone: posicao };
+    try {
+      configuracao = configArquivo.gravar(caminhos.configJson, configuracao);
+    } catch (erro) {
+      log.aviso('Não foi possível gravar a posição do ícone flutuante no config.json', erro);
+    }
+  }
+
+  // Uma só janela, com menu lateral: Biblioteca e Configurações. Minimizada, vira o ícone flutuante.
+  janelaPrincipal = criarJanelaPrincipal({
     caminhos,
     log,
     obterConfig: () => configuracao,
     salvarConfig: salvarConfiguracao,
     sincronizador,
+    obterAplicadoEm: () => sincronizador.estadoAtual().aplicadoEm,
+    aoMostrar: () => iconeFlutuante.esconder(),
+    aoEsconderParaIcone: () => iconeFlutuante.mostrar(),
+    aoFechar: () => iconeFlutuante.esconder(), // fechar (X) não deixa o ícone: o app segue na bandeja
   });
 
-  janelaBiblioteca = criarJanelaBiblioteca({
+  iconeFlutuante = criarIconeFlutuante({
     caminhos,
     log,
-    obterAplicadoEm: () => sincronizador.estadoAtual().aplicadoEm,
+    obterPosicaoSalva: () => configuracao.posicaoIcone,
+    aoPosicionar: guardarPosicaoDoIcone,
+    aoAbrir: () => janelaPrincipal.abrir(), // na seção em que a janela estava
   });
 
   // -----------------------------------------------------------------------
@@ -246,9 +264,13 @@ function iniciarAplicativo() {
   process.on('uncaughtException', (erro) => log.erro('Erro não tratado', erro));
   process.on('unhandledRejection', (erro) => log.erro('Promessa rejeitada sem tratamento', erro));
 
-  // Sem janela principal: fechar a janela de configurações não encerra o aplicativo.
+  // O app vive na bandeja: fechar a janela principal não encerra o aplicativo.
   app.on('window-all-closed', () => {});
-  app.on('second-instance', () => log.info('Outra execução do TextCDSP foi bloqueada (já há uma aberta)'));
+  // Abrir o TextCDSP de novo (menu Iniciar) com ele já rodando: mostra a janela principal.
+  app.on('second-instance', () => {
+    log.info('Outra execução do TextCDSP foi bloqueada (já há uma aberta); mostrando a janela principal');
+    janelaPrincipal.abrir();
+  });
 
   function definirEstado(novo) {
     estado = novo;
@@ -392,6 +414,7 @@ function iniciarAplicativo() {
       .parar()
       .catch((erro) => log.erro('Falha ao parar o motor na saída', erro))
       .finally(() => {
+        if (iconeFlutuante) iconeFlutuante.destruir();
         if (bandeja) bandeja.destruir();
         app.quit();
       });
@@ -406,8 +429,8 @@ function iniciarAplicativo() {
       log,
       aoAlternar: alternar,
       aoAtualizarSnippets: sincronizarEmSegundoPlano,
-      aoAbrirBiblioteca: () => janelaBiblioteca.abrir(),
-      aoAbrirConfiguracoes: () => janelaConfig.abrir(),
+      aoAbrirBiblioteca: () => janelaPrincipal.abrir('biblioteca'),
+      aoAbrirConfiguracoes: () => janelaPrincipal.abrir('configuracoes'),
       aoAbrirPessoais: () => abrir(caminhos.pessoalYml, 'o arquivo de atalhos pessoais'),
       aoAbrirLogs: () => abrir(caminhos.logs, 'a pasta de logs'),
       aoAbrirSobre: () => mostrarSobre().catch((erro) => log.erro('Falha ao mostrar o Sobre', erro)),
@@ -420,7 +443,7 @@ function iniciarAplicativo() {
     if (jaDisponivel) bandeja.atualizarVersaoDisponivel(jaDisponivel.versao);
 
     // Primeira execução: sem pasta configurada, abre as configurações.
-    if (!configuracao.fonteSnippets) janelaConfig.abrir();
+    if (!configuracao.fonteSnippets) janelaPrincipal.abrir('configuracoes');
 
     await exclusivo(arrancar);
     vigia = setInterval(() => vigiar().catch((erro) => log.erro('Falha na verificação periódica', erro)), INTERVALO_VIGIA_MS);

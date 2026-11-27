@@ -67,12 +67,14 @@ function criarCaminhos({ empacotado, resourcesPath, appPath, userData }) {
 
     // Arquivos do aplicativo
     icone: path.join(appPath, 'assets', 'icone.ico'),
-    paginaConfiguracoes: path.join(appPath, 'src', 'renderer', 'configuracoes', 'index.html'),
-    preloadConfiguracoes: path.join(appPath, 'src', 'preload', 'configuracoes.js'),
     // Avisos de licença de terceiros (Espanso, GPL-3). Instalado: fora do app.asar, para abrir no Bloco de Notas.
     avisos: empacotado ? path.join(resourcesPath, 'THIRD_PARTY_NOTICES.txt') : path.join(appPath, 'THIRD_PARTY_NOTICES.txt'),
-    paginaBiblioteca: path.join(appPath, 'src', 'renderer', 'biblioteca', 'index.html'),
-    preloadBiblioteca: path.join(appPath, 'src', 'preload', 'biblioteca.js'),
+    // Janela principal (Biblioteca + Configurações, Marco 11)
+    paginaPrincipal: path.join(appPath, 'src', 'renderer', 'principal', 'index.html'),
+    preloadPrincipal: path.join(appPath, 'src', 'preload', 'principal.js'),
+    // Ícone flutuante (Marco 11). A página mostra assets\icon128.png (o ícone do programa) em 48 px.
+    paginaIcone: path.join(appPath, 'src', 'renderer', 'icone', 'index.html'),
+    preloadIcone: path.join(appPath, 'src', 'preload', 'icone.js'),
   };
 }
 

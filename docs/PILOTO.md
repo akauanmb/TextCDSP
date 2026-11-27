@@ -25,7 +25,7 @@ Quem conduz o piloto (a pessoa que administra os snippets) preenche a seção 1.
 
 ## 3. Primeira configuração
 
-- [ ] A janela de configurações abriu sozinha.
+- [ ] A janela do TextCDSP abriu sozinha, na seção **Configurações**.
 - [ ] A pessoa conseguiu escolher a pasta de snippets sem ajuda.
 - [ ] O botão **Testar** mostrou o número certo de snippets e `0 erros`.
 - [ ] Depois de **Salvar**, o menu do ícone mostrou "Snippets atualizados".
@@ -42,6 +42,7 @@ Use durante a semana de trabalho normal, não só em testes.
 - [ ] Algum atalho disparou sem querer no meio de uma palavra ou de um endereço? Anote qual.
 - [ ] Digitar rápido, ou com o computador lento, faz o atalho falhar ou sair pela metade?
 - [ ] **Buscar** e **Copiar texto** na Biblioteca: a busca acha o que a pessoa procura? O texto colado no Google Docs sai certo?
+- [ ] **Minimizar** a janela vira o ícone flutuante, que dá para arrastar; um clique reabre a janela. O ícone atrapalha ou toma o cursor do programa em que a pessoa escreve? Onde ele fica no segundo monitor, se houver?
 - [ ] Criar, editar e excluir um **atalho pessoal** pela Biblioteca: o atalho novo funciona em até alguns segundos, sem reiniciar?
 
 ## 5. Comportamento offline
@@ -58,7 +59,7 @@ Quem conduz altera a pasta de snippets e cada participante confere.
 - [ ] Adicionar um snippet novo: aparece na Biblioteca e funciona dentro do intervalo de sincronização (ou na hora, com **Atualizar snippets**).
 - [ ] Alterar o texto de um snippet existente: o texto novo é usado.
 - [ ] Apagar um snippet: ele deixa de funcionar.
-- [ ] **Erro de propósito** (por exemplo, dois atalhos em que um começa com o outro, como `/cont` e `/contestacao`): chegou uma notificação de erro, os atalhos continuaram funcionando com a versão anterior e a janela de configurações mostra o erro. Corrija na pasta e confirme que volta ao normal.
+- [ ] **Erro de propósito** (por exemplo, dois atalhos em que um começa com o outro, como `/cont` e `/contestacao`): chegou uma notificação de erro, os atalhos continuaram funcionando com a versão anterior e a seção Configurações mostra o erro. Corrija na pasta e confirme que volta ao normal.
 - [ ] O atalho pessoal de cada participante continuou intacto depois de todas as atualizações.
 
 ## 7. Atualização do programa
