@@ -22,7 +22,7 @@ Leia este arquivo inteiro antes de qualquer tarefa. Se a tarefa contradisser alg
 
 ```
 CLAUDE.md, package.json, espanso.lock.json, .gitignore
-docs/            PLANO.md, ESPANSO-NOTAS.md, INSTALACAO.md, PILOTO.md
+docs/            PLANO.md, ESPANSO-NOTAS.md, WINDOWS-NOTAS.md, INSTALACAO.md, PILOTO.md
 scripts/         scripts de desenvolvimento (baixar-espanso.js, validar.js, publicar.js)
 snippets/        exemplos e biblioteca inicial (YAML do Espanso)
 src/main/        processo principal do Electron (um módulo por responsabilidade)

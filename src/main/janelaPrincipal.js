@@ -11,7 +11,8 @@
 //   biblioteca:mudou              (do processo principal para a página: a lista precisa ser relida)
 // Não carrega conteúdo remoto, não navega, não abre outras janelas e nega qualquer permissão.
 
-const { BrowserWindow, ipcMain, clipboard, shell, dialog } = require('electron');
+const { BrowserWindow, ipcMain, shell, dialog } = require('electron');
+const areaTransferencia = require('./areaTransferencia');
 const { carregarBiblioteca, prepararCopia, salvarPessoal, excluirPessoal } = require('./biblioteca');
 const { textoStatusSync } = require('../shared/statusSync');
 
@@ -69,8 +70,8 @@ function criarJanelaPrincipal({ caminhos, log, obterConfig, salvarConfig, sincro
     const preparo = await prepararCopia(caminhos, pedido);
     if (!preparo.ok) return preparo;
     // Para html, vai o html e o texto puro: o Google Docs usa o html e mantém negrito, listas etc.
-    if (preparo.html) clipboard.write({ text: preparo.texto, html: preparo.html });
-    else clipboard.writeText(preparo.texto);
+    if (preparo.html) await areaTransferencia.escreverFormatado({ texto: preparo.texto, html: preparo.html });
+    else await areaTransferencia.escreverTexto(preparo.texto);
     return { ok: true, comFormatacao: Boolean(preparo.html) };
   }));
 
