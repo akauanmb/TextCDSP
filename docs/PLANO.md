@@ -11,7 +11,9 @@
 TextCDSP (Electron, ícone na bandeja)
  ├── Motor: Espanso portable, sem modificações, iniciado e parado pelo app
  ├── Sincronização: pasta compartilhada → validação → snippets oficiais em uso
- ├── Biblioteca: janela para buscar e copiar snippets
+ ├── Janela principal com menu lateral (Marco 11): Biblioteca + Configurações
+ │    ├── Biblioteca: buscar, copiar e inserir snippets, organizados em pastas
+ │    └── Minimizada, vira um ícone flutuante e arrastável
  ├── Editor (modo administrador): cria snippets sem escrever YAML
  └── Instalador NSIS por usuário (sem administrador)
 ```
@@ -26,9 +28,15 @@ TextCDSP (Electron, ícone na bandeja)
 | 6 | Instalador `.exe` | Sonnet | 5 |
 | 7 | Aviso de nova versão + piloto no setor | Sonnet + você | 6 |
 | 8 | Editor visual de snippets (opcional) | Sonnet | 7 |
+| 9 | Atalhos iniciados por caractere especial (lista permitida) | Sonnet + teste manual seu | 6 |
+| 10 | Pastas nos snippets oficiais | Sonnet | 9 |
+| 11 | Janela única com menu lateral + ícone flutuante | Sonnet + teste manual seu | 10 |
+| 12 | Botão "Inserir" na caixa de texto ativa | Sonnet + teste manual seu | 11 |
 | C | Conteúdo: converter os textos reais em snippets | Sonnet ou Opus | 2 (em paralelo) |
 
 O **Marco 6 já entrega um executável usável**. Os marcos 7 e 8 são melhorias para o uso no dia a dia do setor.
+
+Os **marcos 9 a 12** foram pedidos depois do Marco 6. **Ordem sugerida: 9, 10, 11, 12 e só então o 7**, para o piloto testar a interface final. O Marco 8 continua opcional e vem depois de todos.
 
 ---
 
@@ -50,11 +58,11 @@ Cada prompt depende destas escolhas. Se mudar alguma, ajuste também o `CLAUDE.m
 ## Como usar cada prompt
 
 1. Abra uma sessão nova do Claude Code na pasta do projeto e troque o modelo com `/model sonnet`.
-2. **Nos marcos 3 a 8**, ative o *plan mode* (Shift+Tab) antes de colar o prompt. Leia o plano que o Sonnet propõe e aprove só se ele bater com os critérios de aceite. É aqui que se evita retrabalho.
+2. **Nos marcos 3 a 12**, ative o *plan mode* (Shift+Tab) antes de colar o prompt. Leia o plano que o Sonnet propõe e aprove só se ele bater com os critérios de aceite. É aqui que se evita retrabalho.
 3. Cole o prompt do marco **inteiro**.
 4. Ao final, confira você mesmo os **critérios de aceite**. Se algum falhar, use o *prompt de correção* no fim deste documento, **na mesma sessão**.
 5. Com tudo aprovado, rode `git push`. O Sonnet faz o commit, mas não o push.
-6. (Opcional) Numa sessão com Opus, rode `/code-review` antes do push nos marcos 3, 4 e 6.
+6. (Opcional) Numa sessão com Opus, rode `/code-review` antes do push nos marcos 3, 4, 6, 10 e 12.
 
 Se o Sonnet relatar que um fato contradiz o plano, **não improvise**. Por exemplo, se o Espanso portable não puder mudar de pasta. Traga o relatório para uma sessão com Opus e ajuste o plano primeiro.
 
@@ -412,6 +420,284 @@ Critérios de aceite:
 - Comentários existentes no arquivo YAML continuam lá após uma edição.
 
 Commit: "Marco 8: editor de snippets no modo administrador"
+````
+
+---
+
+## Marcos 9 a 12: melhorias pedidas depois do Marco 6
+
+### Decisões já tomadas (26/11/2026)
+
+1. **Pastas só nos snippets oficiais.** As subpastas da pasta compartilhada viram pastas na Biblioteca. Os pessoais continuam em `pessoal.yml`, numa pasta "Pessoal".
+2. **O atalho sempre começa com um caractere especial de uma lista fixa: `/ ; ! # = +`.** O `/` continua valendo, então nenhum atalho existente precisa mudar.
+   - **Ficam fora da lista:**
+     - letras, números e espaço;
+     - teclas mortas do teclado ABNT2 e do US-Internacional (`´ ` ~ ^ ¨ ' "`), que ficam esperando a tecla seguinte;
+     - caracteres comuns dentro de palavras, números e endereços (`- . , : _ & ? %`);
+     - `@`, que abre o menu de menções do Google Docs;
+     - `\` (caminhos de arquivo) e `*` (formatação automática).
+   - O `/` tem um problema conhecido: ao digitar um endereço como `site.com/prazo`, o `/prazo` expande. Trocar o `/` dos oficiais existentes é uma decisão de conteúdo, fora destes marcos.
+3. **Uma janela só, com menu lateral: Biblioteca e Configurações.** Minimizada, ela vira um ícone pequeno, flutuante e arrastável. Um clique no ícone reabre a janela.
+4. **"Inserir" só para atalhos de texto simples** (sem campos, escolhas, datas nem formatação). Os outros continuam com "Copiar texto" ou com o próprio atalho.
+
+Antes de cada marco, confira se o `CLAUDE.md` ainda bate com estas decisões. Os marcos 11 e 12 o atualizam no que for preciso.
+
+---
+
+## Marco 9: atalhos iniciados por caractere especial
+
+**Por que primeiro:** é uma mudança pequena e pura no validador. Os marcos seguintes, a Trilha C e o formulário de atalhos pessoais dependem dela.
+
+````text
+Leia o CLAUDE.md, o docs/PLANO.md (inclusive "Marcos 9 a 12: decisões já tomadas") e o docs/ESPANSO-NOTAS.md. Execute o MARCO 9.
+
+Objetivo: o atalho passa a poder começar com qualquer caractere de uma lista fixa de caracteres especiais (/ ; ! # = +), e nunca com outra coisa. Os atalhos que começam com "/" continuam válidos.
+
+Entregas:
+1. src/shared/validador.js:
+   - exporte PREFIXOS_TRIGGER = ['/', ';', '!', '#', '=', '+']. É a única lista: nenhum outro módulo repete esses caracteres.
+   - monte PADRAO_TRIGGER a partir dela: um caractere da lista seguido de 2 a 30 letras minúsculas sem acento ou números. Escape os caracteres ao montar a expressão regular.
+   - a mensagem da regra trigger-formato passa a citar os caracteres permitidos (ex.: "comece com um destes caracteres: / ; ! # = +, seguido de 2 a 30 letras minúsculas sem acento ou números").
+   - trigger-duplicado e trigger-prefixo não mudam. Atalhos com caracteres iniciais diferentes nunca conflitam (/cont e ;cont convivem).
+2. src/shared/pessoais.js (formulário de atalho pessoal):
+   - normalizarTrigger: se o atalho começar com letra ou número, acrescenta "/" (como hoje). Se começar com um caractere especial fora da lista, não acrescenta nada, e a validação recusa.
+   - a mensagem de erro do campo cita os caracteres permitidos.
+3. Janela Biblioteca: o texto de ajuda e o exemplo do campo Atalho mostram a lista (ex.: "/ola ou ;ola").
+4. docs/ESPANSO-NOTAS.md, nova pergunta "P11. Atalhos iniciados por ; ! # = +":
+   - use uma cópia do motor, como no roteiro de teste manual do fim do arquivo, com um match por caractere da lista;
+   - registre o resultado de `espansod.exe match list -j` (VERIFICADO);
+   - a expansão ao digitar fica NÃO VERIFICADO até o teste manual do critério de aceite;
+   - se algum caractere não carregar, tire-o da lista e explique na resposta.
+5. Testes:
+   - test/validador.test.js: um caso válido para cada caractere da lista; casos inválidos para letra, número, espaço, "@", "-", ".", "´", "~", "^" e "'". O prefixo entre atalhos com o mesmo caractere inicial (;cont e ;contestacao) dá erro; /cont e ;cont juntos não dão.
+   - test/pessoais.test.js: "ola" vira "/ola"; ";ola" fica igual; "@ola" é recusado com a mensagem que cita a lista.
+6. Documentação:
+   - na Trilha C deste PLANO.md, troque "Trigger no padrão /[a-z0-9]{2,30}" pela regra nova;
+   - em docs/INSTALACAO.md, na parte do atalho pessoal, explique os caracteres permitidos.
+
+Fora do escopo: trocar o "/" dos atalhos existentes; caractere inicial configurável; mudar as demais regras do validador.
+
+Critérios de aceite:
+- npm test passa.
+- npm run validar -- snippets continua com 0 erros.
+- Pasta temporária com ;cont e ;contestacao: npm run validar sai com código 1 e mostra trigger-prefixo. Com /cont e ;cont: 0 erros.
+- Pasta com @cont ou cont: erro trigger-formato, com a lista de caracteres na mensagem.
+- Criar pela Biblioteca os atalhos pessoais ;ola, !ola, #ola, =ola e +ola: cada um funciona no Google Docs (peça ao usuário para confirmar). O que não expandir sai da lista e é registrado na P11.
+- Tentar criar @ola: o formulário recusa e cita os caracteres permitidos.
+- Buscar ";ola" na Biblioteca encontra o atalho.
+
+Commit: "Marco 9: atalhos iniciados por caractere especial"
+````
+
+---
+
+## Marco 10: pastas nos snippets oficiais
+
+**Por que:** com muitos snippets, uma lista plana de arquivos fica difícil de navegar. O Espanso já carrega subpastas de `match/` (P6), então o motor não muda: muda o que a sincronização copia e como a Biblioteca mostra.
+
+````text
+Leia o CLAUDE.md, o docs/PLANO.md (inclusive "Marcos 9 a 12: decisões já tomadas") e o docs/ESPANSO-NOTAS.md (principalmente P6 e P7). Execute o MARCO 10.
+
+Objetivo: a pasta compartilhada pode ter subpastas (ex.: Medicamentos/contestacao.yml, Medicamentos/Recursos/agravo.yml). A sincronização reproduz a árvore em match/oficial/ e a Biblioteca mostra os snippets em pastas que abrem e fecham.
+
+Entregas:
+1. Leitura (src/main/sincronizacao.js, lerFonte):
+   - passa a ler as subpastas recursivamente (com uma trava de segurança de 10 níveis);
+   - ignora arquivos iniciados por "_", pastas iniciadas por "_" ou "." (como _historico e o _instalador do Marco 7) e o que não for .yml;
+   - o "nome" de cada arquivo passa a ser o caminho relativo com "/" (ex.: "Medicamentos/contestacao.yml"), também no Windows;
+   - o limite de 3 níveis NÃO é aplicado aqui, e sim no validador (entrega 4), para a regra ficar num lugar só;
+   - mantenha o tempo máximo de leitura que já existe;
+   - o hash usa o caminho relativo. Na primeira sincronização depois da atualização do app, os snippets são reaplicados uma vez (registre isso no log, é esperado).
+2. Aplicação (substituirPasta e restaurarDoCache): cria as subpastas ao gravar em staging e em cache/ultima-valida/. temArquivosYml passa a procurar também nas subpastas. Um arquivo movido de pasta na fonte sai do lugar antigo (a troca da pasta inteira já garante isso; cubra com teste).
+3. scripts/validar.js passa a usar a mesma lerFonte, para que a regra de quais arquivos entram seja uma só. O resumo continua igual.
+4. src/shared/validador.js:
+   - Snippet ganha "pasta": o caminho da pasta, com "" na raiz. "categoria" passa a ser o caminho sem a extensão (ex.: "Medicamentos/contestacao").
+   - nova regra de ERRO (caminho-profundo): arquivo em mais de 3 níveis de subpastas, citando o caminho. Como todo erro, impede a aplicação;
+   - nada de path nem fs: trate o caminho como texto.
+   - Os erros já citam "arquivo" com o caminho relativo; confira as mensagens de trigger-duplicado e trigger-prefixo entre pastas diferentes.
+5. src/shared/arvore.js (puro, carregável por <script> na janela como o busca.js), com montarArvore(snippets):
+   - devolve nós { tipo: "pasta" | "arquivo", nome, caminho, filhos, total };
+   - cada arquivo é um nó, com os snippets dele como filhos;
+   - ordem pt-BR; a pasta "Pessoal" sempre por último.
+   - Teste em test/arvore.test.js.
+6. Biblioteca (src/main/biblioteca.js e src/renderer/biblioteca/):
+   - a lista vira uma árvore: pastas e arquivos com seta para abrir e fechar e o total de snippets ao lado. Os snippets ficam dentro do arquivo deles. Arquivos da raiz aparecem como hoje, no primeiro nível. Os pessoais ficam na pasta "Pessoal".
+   - a lista suspensa "Categoria" sai.
+   - a busca continua instantânea. Com texto na busca, a árvore vira uma lista plana dos resultados, cada um com o caminho ("Medicamentos › contestacao"). Buscar o nome de uma pasta encontra os snippets dela.
+   - o estado aberto/fechado das pastas é lembrado enquanto o app estiver aberto (inclusive quando a lista é relida por "biblioteca:mudou"). Começa tudo fechado.
+   - teclado: setas para cima e para baixo percorrem os itens visíveis; seta para a direita abre a pasta; seta para a esquerda fecha ou volta para a pasta de cima; Enter num snippet copia o texto, como hoje; Enter numa pasta abre ou fecha.
+   - os detalhes mostram "Pasta: Medicamentos › contestacao".
+7. Documentação:
+   - na Trilha C deste PLANO.md, o destino passa a ser <pasta-fonte>/<pasta>/<categoria>.yml (até 3 níveis);
+   - em docs/INSTALACAO.md, uma seção curta "Para quem administra a pasta compartilhada": subpastas, limite de 3 níveis e o que é ignorado.
+8. Testes em test/sincronizacao.test.js, com pastas temporárias:
+   - árvore com raiz e 2 níveis aplicada igual;
+   - _historico e _pasta ignoradas;
+   - arquivo no 4º nível bloqueia a aplicação e mantém o anterior;
+   - arquivo movido de pasta;
+   - restauração do cache com subpastas;
+   - o hash muda quando só o caminho muda.
+
+Fora do escopo: pastas nos atalhos pessoais; criar, renomear ou mover pastas pelo app; mudanças no motor.
+
+Critérios de aceite:
+- npm test passa.
+- Pasta-fonte de teste com exemplos.yml na raiz, Medicamentos/contestacao.yml, Medicamentos/Recursos/agravo.yml e _historico/velho.yml: npm run validar -- <pasta> conta só os snippets dos três primeiros.
+- Configurar essa pasta no app: em até 10 s, match/oficial/ tem a mesma árvore (sem _historico) e os atalhos de todos os níveis funcionam no Google Docs.
+- /cont na raiz e /contestacao em Medicamentos/: a sincronização não aplica, e a mensagem cita os dois caminhos.
+- Um arquivo em A/B/C/D/x.yml: erro caminho-profundo, a versão anterior continua em uso.
+- A Biblioteca mostra a árvore, abre e fecha pastas pelo mouse e pelo teclado, e a busca mostra o caminho de cada resultado.
+- Fechar o app, apagar match/oficial/ e abrir de novo: a árvore volta do cache.
+
+Commit: "Marco 10: pastas nos snippets oficiais"
+````
+
+---
+
+## Marco 11: janela única com menu lateral e ícone flutuante
+
+**Por que:** hoje Biblioteca e Configurações são duas janelas separadas. Juntas, ficam num só lugar, que se recolhe num ícone pequeno sempre à mão. O Marco 12 usa esse ícone.
+
+````text
+Leia o CLAUDE.md, o docs/PLANO.md (inclusive "Marcos 9 a 12: decisões já tomadas") e o docs/ESPANSO-NOTAS.md. Execute o MARCO 11.
+
+Objetivo: substituir as janelas Biblioteca e Configurações por uma janela principal com menu lateral. Ao ser minimizada, ela vira um ícone pequeno, flutuante, sempre visível e arrastável, que reabre a janela com um clique.
+
+Entregas:
+1. Janela principal:
+   - src/main/janelaPrincipal.js, src/renderer/principal/ e src/preload/principal.js substituem janelaBiblioteca.js, janelaConfiguracoes.js, src/renderer/biblioteca/, src/renderer/configuracoes/ e os dois preloads, que são apagados.
+   - Uma única janela, título "TextCDSP", cerca de 1100x720, mínimo de 860x560.
+   - Mesmas regras de segurança de hoje: contextIsolation, sandbox, sem navegação, sem novas janelas, sem permissões e IPC aceito só da própria janela.
+2. Menu lateral à esquerda, com os itens "Biblioteca" e "Configurações" e o item ativo destacado. No rodapé do menu:
+   - o texto de status da sincronização (o mesmo da bandeja);
+   - o botão "Minimizar para ícone".
+   As seções são só escondidas e mostradas, nunca recriadas: trocar de seção não perde o que foi digitado.
+3. Conteúdo das seções:
+   - a Biblioteca e as Configurações continuam com tudo o que fazem hoje (inclusive a árvore do Marco 10 e os atalhos pessoais do Marco 5);
+   - reaproveite os scripts atuais como arquivos separados carregados por <script> (ex.: principal/biblioteca.js, principal/configuracoes.js), sem bundler e sem framework;
+   - unifique o CSS que for igual.
+4. IPC:
+   - os canais existentes mantêm os nomes: biblioteca:*, pessoal:*, config:*, fonte:*, sync:*;
+   - novos: "janela:secao" (do processo principal para a página: abre numa seção) e "janela:minimizar-para-icone" (da página para o processo principal).
+   - Nada além disso.
+5. Quem abre o quê:
+   - bandeja "Abrir biblioteca" e clique duplo no ícone da bandeja: seção Biblioteca;
+   - bandeja "Configurações...", clique na notificação de erro e primeira execução sem pasta configurada: seção Configurações;
+   - abrir o TextCDSP de novo pelo menu Iniciar (second-instance): mostra a janela, em vez de só registrar no log.
+   Se a janela já existir, ela vem para a frente na seção pedida. Nunca existem duas.
+6. Ícone flutuante (src/main/iconeFlutuante.js, src/renderer/icone/, src/preload/icone.js):
+   - BrowserWindow de 48x48: sem moldura, fundo transparente, redondo, sem redimensionar, sempre por cima, fora da barra de tarefas e do Alt+Tab, focusable: false (não tira o foco do programa em que a pessoa está digitando). Mostre com showInactive().
+   - Visual: o ícone "TC" do app (gere um PNG com o scripts/gerar-icone.js, se ainda não houver). Levemente transparente; opaco ao passar o mouse. Dica: "TextCDSP: clique para abrir, arraste para mover".
+   - Arrastar: implemente com pointerdown/pointermove/pointerup e setPointerCapture, enviando a posição de tela ao processo principal, que chama setPosition. Não use -webkit-app-region: drag (ele engole o clique). Movimento de menos de 4 px conta como clique.
+   - Clique: abre a janela principal na última seção usada e esconde o ícone.
+   - Botão direito: menu nativo com "Abrir TextCDSP" e "Esconder ícone". Escondido, a janela continua acessível pela bandeja.
+   - Canais: "icone:mover", "icone:abrir" e "icone:menu", aceitos só da janela do ícone. Valide os números recebidos.
+   - Posição: gravada em config.json ao soltar (chave posicaoIcone { x, y }), sem disparar sincronização. Ao mostrar, se a posição não estiver na área de trabalho de nenhum monitor (screen.getAllDisplays), use o canto inferior direito do monitor principal, com 24 px de margem. Limite o arraste à área de trabalho.
+7. Minimizar:
+   - nova configuração "minimizarParaIcone" (padrão true), com uma caixa "Ao minimizar, transformar a janela num ícone flutuante" na seção Configurações;
+   - ligada: minimizar (botão da barra de título, botão do menu lateral ou Esc) esconde a janela e mostra o ícone;
+   - desligada: minimiza normalmente para a barra de tarefas;
+   - fechar (X) continua fechando a janela; o app segue na bandeja e o ícone não aparece.
+   - config.js valida as duas chaves novas.
+8. Caminhos novos em src/main/caminhos.js. Ajuste os testes que citam os arquivos antigos (ex.: test/empacotamento.test.js) sem enfraquecer o que eles verificam.
+9. Documentação:
+   - no CLAUDE.md, troque "pela janela Biblioteca" por "pela seção Biblioteca da janela principal";
+   - em docs/INSTALACAO.md, atualize onde ficam Biblioteca e Configurações e explique o ícone flutuante.
+
+Fora do escopo: o botão Inserir (Marco 12); ícone visível com a janela fechada; mudanças no funcionamento da Biblioteca ou das Configurações.
+
+Critérios de aceite (os de mouse e de vários monitores, peça para eu confirmar):
+- npm test passa.
+- Bandeja "Abrir biblioteca" e "Configurações...": abrem a MESMA janela, cada um na sua seção.
+- Digitar algo no campo da pasta, ir para a Biblioteca e voltar: o texto continua lá.
+- Tudo dos marcos 4, 5 e 10 continua funcionando na janela nova: Testar, Salvar, árvore, busca, copiar, criar/editar/excluir pessoal, lista atualizada depois de "Atualizar snippets".
+- Minimizar: a janela some da barra de tarefas e o ícone aparece. Arrastar para outro canto funciona. Um clique reabre a janela na seção em que estava e o ícone some.
+- Com o Bloco de Notas em foco, o ícone visível e o cursor piscando: clicar e arrastar o ícone não abre a janela, e o cursor continua no Bloco de Notas.
+- Fechar e abrir o app: o ícone volta na última posição. Com um segundo monitor desconectado, ele aparece no principal.
+- Com "minimizarParaIcone" desligado, minimizar vai para a barra de tarefas.
+- Abrir o TextCDSP pelo menu Iniciar com ele já rodando: a janela aparece.
+- Todas as BrowserWindow do projeto têm contextIsolation: true, nodeIntegration: false e sandbox: true (mostre o grep).
+
+Commit: "Marco 11: janela única com menu lateral e ícone flutuante"
+````
+
+---
+
+## Marco 12: botão "Inserir" na caixa de texto ativa
+
+**Por que:** "Copiar texto" exige ir até o documento e colar. "Inserir" faz isso de uma vez: devolve o foco ao programa em que a pessoa estava e cola o texto onde está o cursor.
+
+**Como funciona:** a janela se esconde, o Windows devolve o foco à janela anterior, o app põe o texto na área de transferência e simula Ctrl+V. Depois restaura o que a pessoa tinha copiado.
+
+**Risco:** a volta do foco e o Ctrl+V simulado são comportamento do Windows e precisam de verificação prática. Por isso o marco começa com uma verificação e para se ela falhar.
+
+````text
+Leia o CLAUDE.md, o docs/PLANO.md (inclusive "Marcos 9 a 12: decisões já tomadas") e o docs/ESPANSO-NOTAS.md (principalmente P7, sobre teclas sintéticas). Execute o MARCO 12.
+
+Objetivo: na Biblioteca, um botão "Inserir" que coloca o texto de um snippet de texto simples na caixa de texto em que a pessoa estava antes de abrir a janela.
+
+Etapa 1, verificação (antes de qualquer interface):
+- Com um script temporário (apague ao final), teste a sequência:
+  a. a janela principal está em foco;
+  b. janela.hide();
+  c. espera 200 ms;
+  d. clipboard.writeText;
+  e. Ctrl+V via powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden com [System.Windows.Forms.SendKeys]::SendWait('^v') (spawn com windowsHide: true e um comando FIXO, sem nenhum texto do snippet na linha de comando).
+- Registre em docs/WINDOWS-NOTAS.md (novo, no formato VERIFICADO / NÃO VERIFICADO do ESPANSO-NOTAS.md):
+  W1. Ao esconder a janela, o foco volta para a janela anterior? Teste com a janela aberta pela bandeja, pelo ícone flutuante e pelo Alt+Tab.
+  W2. O PowerShell aparece ou rouba o foco?
+  W3. Quanto tempo leva, do clique até o texto aparecer?
+  W4. O Ctrl+V sintético faz o Espanso expandir alguma coisa? Espera-se que não (P7).
+  W5. Quebras de linha: o Bloco de Notas recebe as linhas certas? É preciso converter \n para \r\n?
+  W6. O que acontece com um programa aberto como administrador?
+- Peça ao usuário para confirmar W1 a W5 no Bloco de Notas e no Google Docs.
+- Se W1 ou W2 falhar, escreva "BLOQUEIO" no topo do WINDOWS-NOTAS.md e PARE. Não troque de técnica por conta própria e não adicione dependência.
+- Acrescente docs/WINDOWS-NOTAS.md à estrutura de pastas do CLAUDE.md.
+
+Etapa 2, implementação:
+1. Quais snippets podem ser inseridos: só tipo "texto" (sem variáveis e sem html/markdown), oficiais ou pessoais.
+   - Escreva podeInserir(snippet) em src/shared/ (com teste) e use a mesma função no processo principal e na janela.
+   - Nos outros tipos, o botão aparece desabilitado com a explicação "Só atalhos de texto simples podem ser inseridos. Use Copiar texto."
+2. Interface:
+   - botão "Inserir" nos detalhes, o primeiro e em destaque, ao lado de "Copiar atalho" e "Copiar texto";
+   - atalho de teclado Ctrl+Enter (o Enter continua copiando o texto);
+   - nova linha nos atalhos de teclado da tela, se houver ajuda.
+3. IPC: canal "biblioteca:inserir" { id }, aceito só da janela principal.
+   - O texto é montado no processo principal a partir do id (como em biblioteca:copiar), nunca recebido da página.
+   - O processo principal confere podeInserir de novo.
+4. src/main/inserir.js, com a sequência verificada na etapa 1:
+   a. Guarda o conteúdo atual da área de transferência (texto, html, rtf e imagem).
+   b. Esconde a janela. Se "minimizarParaIcone" estiver ligado, mostra o ícone flutuante sem foco.
+   c. Espera o tempo medido na etapa 1.
+   d. Grava o texto (com as quebras de linha do W5) e manda o Ctrl+V.
+   e. Espera cerca de 600 ms e restaura a área de transferência, MAS só se ela ainda tiver o texto inserido: se a pessoa copiou outra coisa nesse meio tempo, não mexe.
+   f. Uma inserção por vez: um segundo pedido durante outra é ignorado.
+   g. Falha do PowerShell (código diferente de 0 ou tempo esgotado em 5 s): deixa o texto na área de transferência e mostra a Notification "Não foi possível inserir. O texto foi copiado: use Ctrl+V".
+   h. Log: "Texto inserido: <trigger>". Nunca registre o conteúdo do snippet.
+5. Testes:
+   - podeInserir para cada tipo;
+   - a preparação da inserção em src/main/biblioteca.js (sem Electron, como prepararCopia): recusa id inexistente e snippet de formulário;
+   - a regra de restaurar ou não a área de transferência, separada numa função pura.
+6. Documentação em docs/INSTALACAO.md: como usar o Inserir e a limitação dos programas abertos como administrador (use Copiar texto).
+
+Fora do escopo:
+- inserir snippets com campos, escolhas, datas ou formatação;
+- inserir sem abrir a janela (ex.: busca a partir do ícone);
+- atalho de teclado global;
+- processo de PowerShell residente (só se o W3 passar de 1,5 s; nesse caso, relate e não implemente).
+
+Critérios de aceite (os de digitação, peça para eu confirmar):
+- npm test passa.
+- Bloco de Notas: cursor no meio de uma linha, abrir a Biblioteca pela bandeja, escolher um snippet de texto de várias linhas e clicar Inserir. O texto entra onde estava o cursor, com as quebras de linha certas, e a janela vira o ícone.
+- Google Docs: o mesmo, com acentos corretos.
+- Copiar "ABC" antes de inserir: depois da inserção, Ctrl+V cola "ABC".
+- Um snippet com formulário (ex.: /qualif): o botão Inserir está desabilitado com a explicação.
+- O atalho pessoal ;ola (Marco 9) pode ser inserido.
+- Nenhuma janela de console pisca e nenhum atalho do Espanso dispara por causa do Ctrl+V.
+- Programa aberto como administrador: o app não trava nem fecha (o texto pode não entrar; isso está documentado).
+- O app.log tem a linha "Texto inserido: <trigger>" e não tem o conteúdo do snippet.
+
+Commit: "Marco 12: inserir snippet de texto na caixa de texto ativa"
 ````
 
 ---
