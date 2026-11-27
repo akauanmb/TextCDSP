@@ -18,6 +18,7 @@ const {
   aplicarAlteracaoPessoal,
 } = require('../shared/pessoais');
 const { montarTextoParaCopia } = require('../shared/textoCopia');
+const { podeInserir, MENSAGEM_NAO_INSERIVEL } = require('../shared/inserir');
 const { formatarDataHora } = require('../shared/statusSync');
 const { lerFonte } = require('./sincronizacao');
 
@@ -130,6 +131,26 @@ async function prepararCopia(caminhos, pedido, agora = new Date()) {
 }
 
 // ---------------------------------------------------------------------------
+// Inserir (Marco 12)
+// ---------------------------------------------------------------------------
+
+/**
+ * Monta o texto que o "Inserir" vai colar. O texto sai SEMPRE do snippet que tem esse id aqui no processo principal,
+ * nunca do que a página mandar, e podeInserir é conferida de novo (a janela já a conferiu, mas não se confia nela).
+ * @param {{id: string}} pedido
+ * @returns {Promise<{ok: true, texto: string, trigger: string} | {ok: false, mensagem: string}>}
+ */
+async function prepararInsercao(caminhos, pedido, agora = new Date()) {
+  if (!pedido || typeof pedido.id !== 'string') return { ok: false, mensagem: 'Pedido de inserção inválido.' };
+  const { itens } = await montar(caminhos, agora);
+  const item = itens.find((i) => i.visivel.id === pedido.id);
+  if (!item) return { ok: false, mensagem: 'Este snippet não existe mais. A lista foi atualizada.' };
+  if (!podeInserir(item.bruto)) return { ok: false, mensagem: MENSAGEM_NAO_INSERIVEL };
+  const { texto } = montarTextoParaCopia(item.bruto, agora);
+  return { ok: true, texto, trigger: item.bruto.trigger };
+}
+
+// ---------------------------------------------------------------------------
 // Gravação do pessoal.yml
 // ---------------------------------------------------------------------------
 
@@ -232,6 +253,7 @@ module.exports = {
   CATEGORIA_PESSOAL,
   carregarBiblioteca,
   prepararCopia,
+  prepararInsercao,
   salvarPessoal,
   excluirPessoal,
 };

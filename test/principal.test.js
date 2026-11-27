@@ -47,7 +47,7 @@ test('a página principal carrega só arquivos que existem, na ordem certa (comu
     assert.ok(fs.existsSync(renderer('principal', origem)), origem);
   }
   const ordem = caminhosDosScripts.map((s) => path.basename(s));
-  assert.deepEqual(ordem, ['busca.js', 'arvore.js', ...scriptsDaPagina]);
+  assert.deepEqual(ordem, ['busca.js', 'arvore.js', 'inserir.js', ...scriptsDaPagina]);
 });
 
 test('a página do ícone carrega só arquivos que existem', () => {
@@ -104,7 +104,7 @@ const canaisDe = (codigo, padrao) => [...codigo.matchAll(padrao)].map((m) => m[1
 test('janelaPrincipal.js: só os canais da Biblioteca, das Configurações e da janela', () => {
   const codigo = ler('src', 'main', 'janelaPrincipal.js');
   assert.deepEqual(canaisDe(codigo, /ipcMain\.handle\('([^']+)'/g), [
-    'biblioteca:copiar', 'biblioteca:listar', 'config:ler', 'config:salvar', 'fonte:escolher', 'fonte:testar',
+    'biblioteca:copiar', 'biblioteca:inserir', 'biblioteca:listar', 'config:ler', 'config:salvar', 'fonte:escolher', 'fonte:testar',
     'janela:minimizar-para-icone', 'pessoal:abrir-arquivo', 'pessoal:excluir', 'pessoal:salvar', 'sync:agora', 'sync:estado',
   ]);
   assert.equal(canaisDe(codigo, /ipcMain\.on\('([^']+)'/g).length, 0);
@@ -126,6 +126,19 @@ test('ícone flutuante: só icone:mover, icone:abrir e icone:menu, no processo p
   assert.deepEqual(canaisDe(preload, /\.send\('([^']+)'/g), ['icone:abrir', 'icone:menu', 'icone:mover']);
   // Cada tratador confere que a mensagem veio da janela do ícone.
   assert.equal((principal.match(/doIcone\(evento\)/g) || []).length, 3);
+});
+
+test('o Inserir: canal só da janela principal; o texto sai do processo principal, nunca da página', () => {
+  const codigo = ler('src', 'main', 'janelaPrincipal.js');
+  assert.match(codigo, /ipcMain\.handle\('biblioteca:inserir', somenteDaJanela\(/);
+  // O tratador usa o id para montar o texto (prepararInsercao) e só passa adiante o que ela devolveu.
+  const trecho = codigo.slice(codigo.indexOf("'biblioteca:inserir'"), codigo.indexOf("'pessoal:salvar'"));
+  assert.match(trecho, /prepararInsercao\(caminhos, pedido\)/);
+  assert.match(trecho, /inserirTexto\(\{ texto: preparo\.texto, trigger: preparo\.trigger \}\)/);
+  assert.doesNotMatch(trecho, /pedido\.texto/);
+  // A página manda só { id }.
+  assert.match(ler('src', 'preload', 'principal.js'), /inserir: \(pedido\) => ipcRenderer\.invoke\('biblioteca:inserir', pedido\)/);
+  assert.match(ler('src', 'renderer', 'principal', 'biblioteca.js'), /api\.inserir\(\{ id: s\.id \}\)/);
 });
 
 test('janelaPrincipal.js: cada tratador confere a origem (somenteDaJanela)', () => {

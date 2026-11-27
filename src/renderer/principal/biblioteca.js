@@ -7,6 +7,7 @@
   const { api, $, el, irParaSecao, secaoAtiva } = window.CDSPComum;
   const { filtrarSnippets } = window.CDSPBusca;
   const { montarArvore, linhasVisiveis, chavesDosAncestrais, chaveDe, caminhoDoSnippet, SEPARADOR } = window.CDSPArvore;
+  const { podeInserir, MENSAGEM_NAO_INSERIVEL } = window.CDSPInserir;
 
   const ROTULO_TIPO = {
     texto: 'Texto',
@@ -257,9 +258,21 @@
 
   function renderDetalhes(s) {
     const ehPessoal = s.origem === 'pessoal';
+    // "Inserir" é o primeiro botão e o destacado. Só atalhos de texto simples podem ser inseridos; nos outros ele
+    // aparece desabilitado, com a explicação (a mesma função podeInserir vale no processo principal).
+    const insere = podeInserir(s);
     const acoes = [
+      el('button', {
+        id: 'inserir',
+        type: 'button',
+        classe: 'principal',
+        disabled: !insere,
+        title: insere ? false : MENSAGEM_NAO_INSERIVEL,
+        'aria-describedby': insere ? false : 'inserir-explicacao',
+        aoClicar: inserirSelecionado,
+      }, 'Inserir'),
       el('button', { id: 'copiar-atalho', type: 'button', aoClicar: () => copiar('atalho') }, 'Copiar atalho'),
-      el('button', { id: 'copiar-texto', type: 'button', classe: 'principal', aoClicar: () => copiar('texto') }, 'Copiar texto'),
+      el('button', { id: 'copiar-texto', type: 'button', aoClicar: () => copiar('texto') }, 'Copiar texto'),
     ];
     if (ehPessoal && s.editavel) {
       acoes.push(
@@ -294,6 +307,9 @@
       el('h3', { texto: 'Texto' }),
       el('pre', { classe: 'texto', texto: s.previewCompleto }),
       confirmacao || el('div', { classe: 'acoes' }, acoes, el('span', { id: 'mensagem', classe: `mensagem ${mensagem.tipo}`, texto: mensagem.texto })),
+      confirmacao ? null : el('p', { id: 'inserir-explicacao', classe: 'dica', texto: insere
+        ? 'Enter copia o texto. Ctrl+Enter insere no programa em que você estava.'
+        : `${MENSAGEM_NAO_INSERIVEL} Enter copia o texto.` }),
       avisoDoArquivo,
     );
   }
@@ -323,6 +339,26 @@
   // ---------------------------------------------------------------------
   // Copiar
   // ---------------------------------------------------------------------
+
+  // Insere o texto do snippet marcado no programa em que a pessoa estava. O processo principal minimiza esta janela,
+  // espera o foco voltar e cola; o texto é montado lá, a partir do id. Falhas chegam por notificação do Windows.
+  async function inserirSelecionado() {
+    const s = selecionado();
+    if (!s) return;
+    if (!podeInserir(s)) {
+      definirMensagem(MENSAGEM_NAO_INSERIVEL, 'erro');
+      return;
+    }
+    try {
+      const r = await api.inserir({ id: s.id });
+      if (!r.ok) {
+        definirMensagem(r.mensagem || 'Não foi possível inserir.', 'erro');
+        await recarregar();
+      }
+    } catch {
+      definirMensagem('Não foi possível inserir.', 'erro');
+    }
+  }
 
   async function copiar(modo) {
     const s = selecionado();
@@ -521,6 +557,10 @@
       // Com o foco na caixa de busca (vazia), as setas laterais também abrem e fecham as pastas.
       evento.preventDefault();
       abrirOuFechar(evento.key === 'ArrowRight' ? 'direita' : 'esquerda');
+    } else if (evento.key === 'Enter' && (evento.ctrlKey || evento.metaKey)) {
+      // Ctrl+Enter insere o snippet marcado; o Enter sozinho continua copiando o texto.
+      evento.preventDefault();
+      if (selecionado()) inserirSelecionado();
     } else if (evento.key === 'Enter' && tag !== 'BUTTON') {
       evento.preventDefault();
       confirmarLinha();

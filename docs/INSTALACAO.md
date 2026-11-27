@@ -37,6 +37,30 @@ Em poucos segundos o menu do ícone mostra **Snippets atualizados**. Depois diss
 - Digite o atalho (por exemplo, `/hoje`) em qualquer lugar onde você escreve.
 - Para ver todos os atalhos, dê **dois cliques no ícone da bandeja**, ou escolha **Abrir biblioteca** no menu dele. A seção **Biblioteca** da janela do TextCDSP mostra os atalhos em pastas que abrem e fecham (clique, ou use as setas do teclado: para a direita abre, para a esquerda fecha). Ao digitar na busca, a lista mostra os resultados com o caminho de cada um, e buscar o nome de uma pasta encontra os atalhos dela. Há botões para copiar o atalho ou o texto.
 
+### Inserir um texto direto no documento
+
+Em vez de copiar e colar, o botão **Inserir** põe o texto do atalho **onde estava o cursor**, no programa em que você
+estava escrevendo:
+
+1. Com o cursor no lugar certo (no Google Docs, no Word, no e-mail...), abra o TextCDSP (ícone da bandeja ou ícone
+   flutuante).
+2. Na **Biblioteca**, escolha o atalho e clique em **Inserir** (ou aperte **Ctrl+Enter**). O **Enter** sozinho continua
+   só copiando o texto.
+3. A janela do TextCDSP se minimiza (vira o ícone flutuante), o foco volta para o seu documento e o texto entra. Leva
+   cerca de meio segundo. O que você tinha copiado antes (por exemplo, um trecho para colar depois) **volta** à área de
+   transferência.
+
+Detalhes que valem saber:
+
+- **Só atalhos de texto simples** podem ser inseridos (os oficiais e os seus pessoais). Atalhos com formulário,
+  escolhas, datas ou formatação mostram o botão **Inserir** desabilitado, com o aviso "Só atalhos de texto simples
+  podem ser inseridos. Use Copiar texto." Para esses, use **Copiar texto** ou digite o próprio atalho.
+- **Programas abertos como administrador não recebem o texto.** O Windows não deixa um programa comum mandar teclas a
+  um programa elevado. Nesse caso o texto **não entra** e nada avisa. Use **Copiar texto** e cole com Ctrl+V.
+- Se o texto não puder ser colado, aparece a notificação "Não foi possível inserir. O texto foi copiado: use Ctrl+V".
+- Fique com o cursor no documento enquanto a janela se minimiza: se você trocar de programa nesse meio segundo, o texto
+  entra no programa em que você estiver.
+
 ### A janela do TextCDSP e o ícone flutuante
 
 A **Biblioteca** e as **Configurações** ficam numa só janela, com um menu à esquerda para trocar de uma para a outra. Trocar de seção não perde o que você estava digitando.

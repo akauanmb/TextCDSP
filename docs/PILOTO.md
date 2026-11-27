@@ -43,6 +43,7 @@ Use durante a semana de trabalho normal, não só em testes.
 - [ ] Digitar rápido, ou com o computador lento, faz o atalho falhar ou sair pela metade?
 - [ ] **Buscar** e **Copiar texto** na Biblioteca: a busca acha o que a pessoa procura? O texto colado no Google Docs sai certo?
 - [ ] **Minimizar** a janela vira o ícone flutuante, que dá para arrastar; um clique reabre a janela. O ícone atrapalha ou toma o cursor do programa em que a pessoa escreve? Onde ele fica no segundo monitor, se houver?
+- [ ] **Inserir**: com o cursor no Google Docs, abrir o TextCDSP, escolher um atalho de texto de várias linhas e clicar **Inserir** (ou Ctrl+Enter). O texto entra onde estava o cursor, com as quebras de linha e os acentos certos? O que a pessoa tinha copiado antes voltou? Em algum programa (principalmente os abertos como administrador) o texto não entrou?
 - [ ] Criar, editar e excluir um **atalho pessoal** pela Biblioteca: o atalho novo funciona em até alguns segundos, sem reiniciar?
 
 ## 5. Comportamento offline

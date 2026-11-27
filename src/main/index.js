@@ -16,6 +16,8 @@ const { criarAtualizador } = require('./atualizacao');
 const { criarBandeja } = require('./bandeja');
 const { criarJanelaPrincipal } = require('./janelaPrincipal');
 const { criarIconeFlutuante } = require('./iconeFlutuante');
+const { criarInseridor } = require('./inserir');
+const areaTransferencia = require('./areaTransferencia');
 const { textoStatusSync } = require('../shared/statusSync');
 const { TITULO_NOTIFICACAO, corpoNotificacao } = require('../shared/versaoInstalador');
 
@@ -236,6 +238,27 @@ function iniciarAplicativo() {
     }
   }
 
+  // "Inserir" (Marco 12): cola o texto de um snippet no programa em que a pessoa estava. A janela é minimizada para
+  // o Windows devolver o foco a esse programa (docs/WINDOWS-NOTAS.md, W1). Falhas chegam por notificação.
+  function notificarFalhaAoInserir({ copiado }) {
+    if (!Notification.isSupported()) return;
+    const notificacao = new Notification({
+      title: 'TextCDSP',
+      body: copiado ? 'Não foi possível inserir. O texto foi copiado: use Ctrl+V' : 'Não foi possível inserir o texto.',
+    });
+    notificacoesAbertas.add(notificacao);
+    notificacao.on('close', () => notificacoesAbertas.delete(notificacao));
+    notificacao.on('failed', () => notificacoesAbertas.delete(notificacao));
+    notificacao.show();
+  }
+
+  const inseridor = criarInseridor({
+    log,
+    area: areaTransferencia,
+    esconderJanela: () => janelaPrincipal.minimizarEAguardar(),
+    aoFalhar: notificarFalhaAoInserir,
+  });
+
   // Uma só janela, com menu lateral: Biblioteca e Configurações. Minimizada, vira o ícone flutuante.
   janelaPrincipal = criarJanelaPrincipal({
     caminhos,
@@ -244,6 +267,7 @@ function iniciarAplicativo() {
     salvarConfig: salvarConfiguracao,
     sincronizador,
     obterAplicadoEm: () => sincronizador.estadoAtual().aplicadoEm,
+    inserirTexto: (pedido) => inseridor.inserir(pedido),
     aoMostrar: () => iconeFlutuante.esconder(),
     aoEsconderParaIcone: () => iconeFlutuante.mostrar(),
     aoFechar: () => iconeFlutuante.esconder(), // fechar (X) não deixa o ícone: o app segue na bandeja

@@ -4,7 +4,7 @@
 // janelas separadas. Uma única janela: se já existir, só vem para a frente, na seção pedida.
 //
 // Canais IPC (só da própria janela; nada além disso existe):
-//   biblioteca:listar, biblioteca:copiar, pessoal:salvar, pessoal:excluir, pessoal:abrir-arquivo
+//   biblioteca:listar, biblioteca:copiar, biblioteca:inserir, pessoal:salvar, pessoal:excluir, pessoal:abrir-arquivo
 //   config:ler, config:salvar, fonte:escolher, fonte:testar, sync:estado, sync:agora
 //   janela:minimizar-para-icone   (da página para o processo principal)
 //   janela:secao                  (do processo principal para a página: abre numa seção)
@@ -13,7 +13,7 @@
 
 const { BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const areaTransferencia = require('./areaTransferencia');
-const { carregarBiblioteca, prepararCopia, salvarPessoal, excluirPessoal } = require('./biblioteca');
+const { carregarBiblioteca, prepararCopia, prepararInsercao, salvarPessoal, excluirPessoal } = require('./biblioteca');
 const { textoStatusSync } = require('../shared/statusSync');
 
 const LIMITE_PROBLEMAS = 200;
@@ -27,11 +27,12 @@ const SECOES = Object.freeze(['biblioteca', 'configuracoes']);
  * @param {(entrada: object) => Promise<object>} p.salvarConfig
  * @param {object} p.sincronizador
  * @param {() => string|null} p.obterAplicadoEm
+ * @param {(pedido: {texto: string, trigger: string}) => Promise<object>} p.inserirTexto  o Inserir (src/main/inserir.js)
  * @param {() => void} [p.aoMostrar]            a janela apareceu (o ícone flutuante deve sumir)
  * @param {() => void} [p.aoEsconderParaIcone]  a janela foi escondida por "minimizar para ícone" (o ícone deve aparecer)
  * @param {() => void} [p.aoFechar]             a janela foi fechada (X)
  */
-function criarJanelaPrincipal({ caminhos, log, obterConfig, salvarConfig, sincronizador, obterAplicadoEm, aoMostrar = () => {}, aoEsconderParaIcone = () => {}, aoFechar = () => {} }) {
+function criarJanelaPrincipal({ caminhos, log, obterConfig, salvarConfig, sincronizador, obterAplicadoEm, inserirTexto = async () => ({ ok: false }), aoMostrar = () => {}, aoEsconderParaIcone = () => {}, aoFechar = () => {} }) {
   let janela = null;
   let paginaPronta = false;
   let ultimaSecao = 'biblioteca'; // a seção pedida por último; é onde uma janela nova abre
@@ -73,6 +74,15 @@ function criarJanelaPrincipal({ caminhos, log, obterConfig, salvarConfig, sincro
     if (preparo.html) await areaTransferencia.escreverFormatado({ texto: preparo.texto, html: preparo.html });
     else await areaTransferencia.escreverTexto(preparo.texto);
     return { ok: true, comFormatacao: Boolean(preparo.html) };
+  }));
+
+  // Inserir: o texto é montado AQUI, a partir do id, e podeInserir é conferida de novo. A inserção roda sem a página
+  // esperar, porque ela própria minimiza a janela; falhas chegam à pessoa por notificação.
+  ipcMain.handle('biblioteca:inserir', somenteDaJanela(async (pedido) => {
+    const preparo = await prepararInsercao(caminhos, pedido);
+    if (!preparo.ok) return preparo;
+    inserirTexto({ texto: preparo.texto, trigger: preparo.trigger }).catch((erro) => log.erro('Falha ao inserir o texto', erro));
+    return { ok: true };
   }));
 
   ipcMain.handle('pessoal:salvar', somenteDaJanela(async (entrada) => {
@@ -127,16 +137,47 @@ function criarJanelaPrincipal({ caminhos, log, obterConfig, salvarConfig, sincro
 
   // ---- Janela ----
 
-  // Minimizar (botão da barra de título, botão do menu lateral ou Esc). Com "minimizarParaIcone" ligado, a janela
-  // é escondida e o ícone flutuante aparece; desligado, minimiza para a barra de tarefas como qualquer janela.
+  // Minimizar (botão da barra de título, botão do menu lateral, Esc ou o Inserir). A janela é SEMPRE minimizada de
+  // verdade primeiro: assim o Windows devolve o foco à janela em que a pessoa estava. O hide() sozinho não devolve
+  // (o foco fica na janela escondida por cerca de 4 s; docs/WINDOWS-NOTAS.md, W1). Com "minimizarParaIcone" ligado,
+  // depois de minimizada ela é escondida e o ícone flutuante aparece (tratador do evento "minimize", mais abaixo);
+  // desligado, fica minimizada na barra de tarefas.
   function minimizar() {
-    if (!existe()) return;
-    if (obterConfig().minimizarParaIcone) {
+    if (existe()) janela.minimize();
+  }
+
+  // Depois que a janela minimiza, o Windows leva um instante para ativar a janela anterior; esconder logo antes disso
+  // não atrapalha (a janela minimizada não tem o foco), mas esperar um pouco evita disputa com a troca de ativação.
+  const ESPERA_ANTES_DE_ESCONDER_MS = 40;
+
+  function esconderDepoisDeMinimizar() {
+    setTimeout(() => {
+      if (!existe() || !janela.isMinimized() || !obterConfig().minimizarParaIcone) return;
       janela.hide();
       aoEsconderParaIcone();
-    } else {
+    }, ESPERA_ANTES_DE_ESCONDER_MS);
+  }
+
+  /**
+   * Minimiza (e, com a opção ligada, esconde) e só devolve depois de o Windows ter tido tempo de passar o foco para a
+   * janela anterior. Quem vai mandar teclas para outro programa (o Inserir) espera por isto. Tempo máximo: 1 s.
+   */
+  function minimizarEAguardar() {
+    return new Promise((resolver) => {
+      if (!existe() || janela.isMinimized() || !janela.isVisible()) {
+        resolver();
+        return;
+      }
+      const limite = setTimeout(resolver, 1000);
+      janela.once('minimize', () => {
+        // O tratador permanente (que esconde a janela) já agendou o esconder; espera um pouco mais que ele.
+        setTimeout(() => {
+          clearTimeout(limite);
+          resolver();
+        }, ESPERA_ANTES_DE_ESCONDER_MS + 20);
+      });
       janela.minimize();
-    }
+    });
   }
 
   ipcMain.handle('janela:minimizar-para-icone', somenteDaJanela(() => {
@@ -196,12 +237,10 @@ function criarJanelaPrincipal({ caminhos, log, obterConfig, salvarConfig, sincro
     });
     propria.once('ready-to-show', () => !propria.isDestroyed() && propria.show());
     propria.on('show', () => aoMostrar());
-    // O botão de minimizar da barra de título: com a opção ligada, vira o ícone flutuante.
-    propria.on('minimize', (evento) => {
-      if (obterConfig().minimizarParaIcone) {
-        evento.preventDefault();
-        minimizar();
-      }
+    // Qualquer minimização (barra de título, botão, Esc, Inserir): a janela minimiza de verdade, o foco volta para a
+    // janela anterior e, com a opção ligada, ela é escondida em seguida e o ícone flutuante aparece.
+    propria.on('minimize', () => {
+      if (obterConfig().minimizarParaIcone) esconderDepoisDeMinimizar();
     });
     propria.on('closed', () => {
       if (janela === propria) {
@@ -214,7 +253,7 @@ function criarJanelaPrincipal({ caminhos, log, obterConfig, salvarConfig, sincro
     return propria;
   }
 
-  return { abrir, minimizar, notificarMudanca, obterJanela: () => (existe() ? janela : null), SECOES };
+  return { abrir, minimizar, minimizarEAguardar, notificarMudanca, obterJanela: () => (existe() ? janela : null), SECOES };
 }
 
 module.exports = { criarJanelaPrincipal, SECOES };

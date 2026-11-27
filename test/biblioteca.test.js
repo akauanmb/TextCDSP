@@ -440,3 +440,69 @@ test('copiar: id que não existe mais e pedidos inválidos', async (t) => {
     assert.equal((await prepararCopia(a.caminhos, pedido)).ok, false);
   }
 });
+
+// ---------------------------------------------------------------------------
+// prepararInsercao (Marco 12)
+// ---------------------------------------------------------------------------
+
+const { MENSAGEM_NAO_INSERIVEL } = require('../src/shared/inserir');
+const { prepararInsercao } = require('../src/main/biblioteca');
+
+test('inserir: um snippet de texto simples devolve o texto e o atalho (e só isso)', async (t) => {
+  const a = ambiente(t, { oficiais: { 'm.yml': yml(bloco('/ola', 'Saudação', 'Olá, mundo')) } });
+  const s = await achar(a, '/ola');
+  assert.deepEqual(await prepararInsercao(a.caminhos, { id: s.id }, hoje), { ok: true, texto: 'Olá, mundo', trigger: '/ola' });
+});
+
+test('inserir: texto de várias linhas sai como está (a conversão para \r\n é do Inserir, depois)', async (t) => {
+  const a = ambiente(t, { pessoal: 'matches:\n  - trigger: "/tres"\n    label: "Três"\n    replace: |-\n      linha 1\n      linha 2\n      linha 3\n' });
+  const s = await achar(a, '/tres');
+  const r = await prepararInsercao(a.caminhos, { id: s.id }, hoje);
+  assert.deepEqual(r, { ok: true, texto: 'linha 1\nlinha 2\nlinha 3', trigger: '/tres' });
+});
+
+test('inserir: oficial e pessoal podem; o atalho pessoal com caractere especial (;ola) também', async (t) => {
+  const a = ambiente(t, { oficiais: { 'm.yml': yml(bloco('/cont', 'Contestação', 'texto fixo')) }, pessoal: yml(bloco(';ola', 'Saudação', 'Olá')) });
+  for (const trigger of ['/cont', ';ola']) {
+    const s = await achar(a, trigger);
+    assert.equal((await prepararInsercao(a.caminhos, { id: s.id }, hoje)).ok, true, trigger);
+  }
+});
+
+test('inserir: formulário (/qualif) é recusado com a explicação do plano', async (t) => {
+  const a = ambiente(t, { oficiais: { 'exemplos.yml': exemplos() } });
+  const s = await achar(a, '/qualif');
+  assert.equal(s.tipo, 'formulario');
+  assert.deepEqual(await prepararInsercao(a.caminhos, { id: s.id }, hoje), { ok: false, mensagem: MENSAGEM_NAO_INSERIVEL });
+});
+
+test('inserir: data, formatado e os outros tipos dos exemplos também são recusados', async (t) => {
+  const a = ambiente(t, { oficiais: { 'exemplos.yml': exemplos() } });
+  const lista = await carregarBiblioteca(a.caminhos, { agora: hoje });
+  const recusados = [];
+  const aceitos = [];
+  for (const s of lista.snippets) {
+    const r = await prepararInsercao(a.caminhos, { id: s.id }, hoje);
+    (r.ok ? aceitos : recusados).push(s.tipo);
+    if (!r.ok) assert.equal(r.mensagem, MENSAGEM_NAO_INSERIVEL, s.trigger);
+  }
+  assert.ok(recusados.length > 0);
+  assert.ok(aceitos.every((tipo) => tipo === 'texto'), JSON.stringify(aceitos));
+  assert.ok(recusados.every((tipo) => tipo !== 'texto'));
+});
+
+test('inserir: id inexistente e pedidos inválidos são recusados', async (t) => {
+  const a = ambiente(t, { oficiais: { 'exemplos.yml': exemplos() } });
+  const inexistente = await prepararInsercao(a.caminhos, { id: 'x::nada::0' }, hoje);
+  assert.deepEqual(inexistente, { ok: false, mensagem: 'Este snippet não existe mais. A lista foi atualizada.' });
+  for (const pedido of [null, undefined, {}, { id: 5 }, { id: null }, 'texto', []]) {
+    assert.equal((await prepararInsercao(a.caminhos, pedido, hoje)).ok, false, JSON.stringify(pedido));
+  }
+});
+
+test('inserir: o texto vem do snippet no processo principal, nunca do que a página manda', async (t) => {
+  const a = ambiente(t, { oficiais: { 'm.yml': yml(bloco('/ola', 'Saudação', 'texto verdadeiro')) } });
+  const s = await achar(a, '/ola');
+  const r = await prepararInsercao(a.caminhos, { id: s.id, texto: 'texto falso vindo da página', trigger: '/outro' }, hoje);
+  assert.deepEqual(r, { ok: true, texto: 'texto verdadeiro', trigger: '/ola' });
+});
