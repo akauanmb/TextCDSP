@@ -16,12 +16,10 @@
   <div class="app">
     <aside class="lateral" aria-label="Lista de snippets">
       <div class="busca">
-        <input id="busca" type="search" spellcheck="false" autocomplete="off" placeholder="Buscar atalho, nome ou texto (Ctrl+F)" aria-label="Buscar snippets">
-        <label class="rotulo-categoria" for="categoria">Categoria</label>
-        <select id="categoria"></select>
+        <input id="busca" type="search" spellcheck="false" autocomplete="off" placeholder="Buscar atalho, nome, pasta ou texto (Ctrl+F)" aria-label="Buscar snippets">
       </div>
       <button id="novo" type="button" class="principal">Novo atalho pessoal</button>
-      <ul id="lista" role="listbox" aria-label="Snippets"></ul>
+      <ul id="lista" role="tree" aria-label="Snippets"></ul>
     </aside>
 
     <main id="painel" class="painel" aria-live="polite"></main>
@@ -30,6 +28,7 @@
   <footer id="rodape" class="rodape"></footer>
 
   <script src="../../shared/busca.js"></script>
+  <script src="../../shared/arvore.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

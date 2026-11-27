@@ -6,6 +6,7 @@
 (function () {
   const api = window.textcdsp;
   const { filtrarSnippets } = window.CDSPBusca;
+  const { montarArvore, linhasVisiveis, chavesDosAncestrais, chaveDe, caminhoDoSnippet, SEPARADOR } = window.CDSPArvore;
   const $ = (id) => document.getElementById(id);
 
   const ROTULO_TIPO = {
@@ -23,7 +24,7 @@
     escolha: 'Escolha de parágrafo',
   };
 
-  let dados = { snippets: [], categorias: [], erroPessoal: null, atualizadoEmTexto: null, prefixosTrigger: [], exemploAtalho: '' };
+  let dados = { snippets: [], erroPessoal: null, atualizadoEmTexto: null, prefixosTrigger: [], exemploAtalho: '' };
 
   // Ajuda do campo Atalho. A lista de caracteres vem do processo principal (validador.js), que é a única fonte dela.
   function ajudaDoAtalho() {
@@ -31,8 +32,14 @@
     const exemplo = dados.exemploAtalho ? ` Exemplo: ${dados.exemploAtalho}` : '';
     return `Comece com um destes caracteres: ${lista}, seguido de 2 a 30 letras minúsculas sem acento ou números.${exemplo}`;
   }
-  let visiveis = [];
-  let selecionadoId = null;
+  // Árvore (Marco 10). Começa tudo fechado; o que a pessoa abre fica lembrado enquanto a janela existir,
+  // inclusive quando a lista é relida por "biblioteca:mudou".
+  let arvore = [];
+  let linhas = []; // as linhas que aparecem na lista agora (árvore, ou resultados da busca)
+  const abertos = new Set(); // chaves das pastas e arquivos abertos
+  let modoBusca = false; // com texto na busca, a árvore vira uma lista plana dos resultados
+  let cursor = null; // chave da linha marcada (pasta, arquivo ou snippet)
+  let selecionadoId = null; // id do snippet marcado; null quando o cursor está numa pasta ou arquivo
   let formulario = null; // { modo: "criar"|"editar", triggerOriginal, valores, erros, arquivoInvalido }
   let confirmandoExclusao = false;
   let mensagem = { texto: '', tipo: '' };
@@ -77,29 +84,42 @@
   // Lista, filtro e rodapé
   // ---------------------------------------------------------------------
 
-  function montarCategorias() {
-    const caixa = $('categoria');
-    const atual = caixa.value || 'Todas';
-    caixa.replaceChildren(el('option', { value: 'Todas', texto: 'Todas' }));
-    for (const categoria of dados.categorias) caixa.append(el('option', { value: categoria, texto: categoria }));
-    caixa.value = dados.categorias.includes(atual) || atual === 'Todas' ? atual : 'Todas';
+  const chaveDoSnippet = (id) => chaveDe({ tipo: 'snippet', caminho: id });
+  const indiceDoCursor = () => linhas.findIndex((l) => l.chave === cursor);
+  const linhaDoCursor = () => linhas.find((l) => l.chave === cursor) || null;
+
+  // Uma linha da lista. Pastas e arquivos têm seta e o total de snippets; os snippets mostram atalho e nome.
+  // Na busca (lista plana), cada resultado mostra também o caminho: "Medicamentos › contestacao".
+  function criarItem(linha) {
+    const { no, chave, nivel, aberto } = linha;
+    const comum = {
+      role: 'treeitem',
+      'aria-level': String(nivel + 1),
+      'aria-selected': chave === cursor ? 'true' : 'false',
+      'data-chave': chave,
+      aoClicar: () => cliqueNaLinha(chave),
+    };
+    if (no.tipo === 'snippet') {
+      const s = no.snippet;
+      return el('li', { ...comum, classe: `n${nivel}` },
+        el('span', { classe: 'item-trigger', texto: s.trigger }),
+        el('span', { classe: 'item-nome', texto: s.label }),
+        modoBusca ? el('span', { classe: 'item-categoria', texto: caminhoDoSnippet(s) }) : null);
+    }
+    return el('li', { ...comum, 'aria-expanded': aberto ? 'true' : 'false', classe: `no no-${no.tipo} n${nivel}` },
+      el('span', { classe: 'seta', 'aria-hidden': 'true', texto: aberto ? '▾' : '▸' }),
+      el('span', { classe: 'no-nome', texto: no.nome }),
+      el('span', { classe: 'no-total', texto: String(no.total) }));
   }
 
   function renderLista() {
     const lista = $('lista');
     lista.replaceChildren();
-    if (visiveis.length === 0) {
+    if (linhas.length === 0) {
       lista.append(el('li', { classe: 'vazio-lista', role: 'presentation', texto: dados.snippets.length === 0 ? 'Nenhum snippet ainda.' : 'Nenhum snippet encontrado.' }));
       return;
     }
-    for (const s of visiveis) {
-      lista.append(
-        el('li', { role: 'option', 'aria-selected': s.id === selecionadoId ? 'true' : 'false', 'data-id': s.id, aoClicar: () => selecionar(s.id) },
-          el('span', { classe: 'item-trigger', texto: s.trigger }),
-          el('span', { classe: 'item-nome', texto: s.label }),
-          el('span', { classe: 'item-categoria', texto: s.categoria })),
-      );
-    }
+    for (const linha of linhas) lista.append(criarItem(linha));
     const atual = lista.querySelector('[aria-selected="true"]');
     if (atual) atual.scrollIntoView({ block: 'nearest' });
   }
@@ -117,33 +137,129 @@
     $('faixa-arquivo-texto').textContent = dados.erroPessoal ? dados.erroPessoal.mensagem : '';
   }
 
-  // Aplica busca e categoria. Mantém a seleção se ainda estiver visível; senão, escolhe o primeiro resultado.
-  function aplicarFiltro() {
-    visiveis = filtrarSnippets(dados.snippets, { texto: $('busca').value, categoria: $('categoria').value });
-    if (!visiveis.some((s) => s.id === selecionadoId)) {
-      selecionadoId = visiveis.length > 0 ? visiveis[0].id : null;
+  // Monta as linhas visíveis: a árvore (só o que está aberto) ou, com texto na busca, os resultados em lista plana.
+  function reconstruirLinhas() {
+    const texto = $('busca').value;
+    modoBusca = texto.trim() !== '';
+    if (modoBusca) {
+      linhas = filtrarSnippets(dados.snippets, { texto }).map((s) => {
+        const no = { tipo: 'snippet', nome: s.trigger, caminho: s.id, snippet: s };
+        return { no, chave: chaveDe(no), nivel: 0, paiChave: null, aberto: null };
+      });
+    } else {
+      linhas = linhasVisiveis(arvore, (chave) => abertos.has(chave));
+    }
+  }
+
+  // Marca um snippet (ou nenhum). Trocar de snippet apaga a mensagem e a confirmação de exclusão do anterior.
+  function marcarSnippet(id) {
+    if (id !== selecionadoId) {
       confirmandoExclusao = false;
       definirMensagem('');
+    }
+    selecionadoId = id;
+    cursor = id ? chaveDoSnippet(id) : null;
+  }
+
+  // Relê as linhas e acerta a marcação. Na busca, mantém o snippet marcado se ele ainda for um resultado;
+  // senão, marca o primeiro resultado. Na árvore, não escolhe nada sozinho.
+  function atualizarLista() {
+    reconstruirLinhas();
+    const chaveDoSelecionado = selecionadoId ? chaveDoSnippet(selecionadoId) : null;
+    const visivel = (chave) => linhas.some((l) => l.chave === chave);
+    if (modoBusca) {
+      if (visivel(chaveDoSelecionado)) cursor = chaveDoSelecionado;
+      else marcarSnippet(linhas.length > 0 ? linhas[0].no.snippet.id : null);
+    } else if (chaveDoSelecionado && visivel(chaveDoSelecionado)) {
+      cursor = chaveDoSelecionado;
+    } else if (cursor && !visivel(cursor)) {
+      cursor = null;
     }
     renderLista();
     if (!formulario) renderPainel();
   }
 
-  function selecionar(id) {
-    if (id === selecionadoId && !formulario) return;
-    selecionadoId = id;
+  // A busca mudou. Ao esvaziá-la, a árvore volta com as pastas do snippet marcado abertas, para ele continuar à vista.
+  function aoMudarBusca() {
+    if (modoBusca && $('busca').value.trim() === '' && selecionadoId) {
+      for (const chave of chavesDosAncestrais(arvore, selecionadoId)) abertos.add(chave);
+    }
+    atualizarLista();
+  }
+
+  // Leva o cursor a uma linha visível. Snippet: mostra os detalhes. Pasta ou arquivo: mostra o resumo.
+  function irParaChave(chave) {
+    const linha = linhas.find((l) => l.chave === chave);
+    if (!linha) return;
+    if (linha.no.tipo === 'snippet') {
+      if (linha.no.snippet.id === selecionadoId && !formulario) return;
+      marcarSnippet(linha.no.snippet.id);
+    } else {
+      marcarSnippet(null);
+      cursor = chave;
+    }
     formulario = null;
     confirmandoExclusao = false;
-    definirMensagem('');
     renderLista();
     renderPainel();
   }
 
+  function alternarAberto(chave, abrir) {
+    const abrirDeFato = abrir === undefined ? !abertos.has(chave) : abrir;
+    if (abrirDeFato) abertos.add(chave);
+    else abertos.delete(chave);
+    reconstruirLinhas();
+  }
+
+  function cliqueNaLinha(chave) {
+    const linha = linhas.find((l) => l.chave === chave);
+    if (!linha) return;
+    if (linha.no.tipo === 'snippet') {
+      irParaChave(chave);
+      return;
+    }
+    alternarAberto(chave);
+    // Com o formulário aberto, abrir ou fechar uma pasta só mexe na lista: não descarta o que foi digitado.
+    if (formulario) renderLista();
+    else irParaChave(chave);
+  }
+
+  // Setas para cima e para baixo percorrem as linhas visíveis.
   function mover(passo) {
-    if (visiveis.length === 0) return;
-    const indice = visiveis.findIndex((s) => s.id === selecionadoId);
-    const novo = Math.min(Math.max(indice + passo, 0), visiveis.length - 1);
-    selecionar(visiveis[novo].id);
+    if (linhas.length === 0) return;
+    const indice = indiceDoCursor();
+    const novo = indice === -1 ? 0 : Math.min(Math.max(indice + passo, 0), linhas.length - 1);
+    irParaChave(linhas[novo].chave);
+  }
+
+  // Seta para a direita abre a pasta (ou arquivo). Seta para a esquerda fecha; se já estiver fechada, ou for um
+  // snippet, volta para a pasta de cima. Não valem na busca, onde a lista é plana.
+  function abrirOuFechar(direcao) {
+    const linha = linhaDoCursor();
+    if (modoBusca || !linha) return;
+    const ehNo = linha.no.tipo !== 'snippet';
+    if (direcao === 'direita') {
+      if (ehNo && !linha.aberto) {
+        alternarAberto(linha.chave, true);
+        irParaChave(linha.chave);
+      }
+    } else if (ehNo && linha.aberto) {
+      alternarAberto(linha.chave, false);
+      irParaChave(linha.chave);
+    } else if (linha.paiChave) {
+      irParaChave(linha.paiChave);
+    }
+  }
+
+  // Enter: copia o texto do snippet; numa pasta ou arquivo, abre ou fecha.
+  function confirmarLinha() {
+    const linha = linhaDoCursor();
+    if (!linha) return;
+    if (linha.no.tipo === 'snippet') copiar('texto');
+    else {
+      alternarAberto(linha.chave);
+      irParaChave(linha.chave);
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -193,8 +309,8 @@
       el('h2', { texto: s.label }),
       el('div', { classe: 'etiquetas' },
         el('span', { classe: `etiqueta ${ehPessoal ? 'pessoal' : ''}`, texto: ehPessoal ? 'Pessoal' : 'Oficial' }),
-        !ehPessoal ? el('span', { classe: 'etiqueta', texto: s.categoria }) : null,
         el('span', { classe: 'etiqueta', texto: ROTULO_TIPO[s.tipo] || s.tipo })),
+      !ehPessoal ? el('p', { id: 'caminho-snippet', classe: 'caminho', texto: `Pasta: ${caminhoDoSnippet(s)}` }) : null,
       s.campos.length > 0 ? [el('h3', { texto: 'Campos' }), tabelaDeCampos(s.campos)] : null,
       el('h3', { texto: 'Texto' }),
       el('pre', { classe: 'texto', texto: s.previewCompleto }),
@@ -203,9 +319,21 @@
     );
   }
 
+  // Resumo de uma pasta ou arquivo da árvore.
+  function renderResumoDoNo(no) {
+    const onde = no.pessoal ? 'Pessoal' : no.caminho.split('/').join(SEPARADOR);
+    mostrarNoPainel(
+      el('h2', { texto: no.nome }),
+      el('p', { id: 'caminho-no', classe: 'caminho', texto: `${no.tipo === 'pasta' ? 'Pasta' : 'Arquivo'}: ${onde}` }),
+      el('p', { classe: 'dica', texto: `${no.total} ${no.total === 1 ? 'snippet' : 'snippets'}. Enter, ou as setas para a direita e para a esquerda, abrem e fecham.` }),
+    );
+  }
+
   function renderPainel() {
     if (formulario) return renderFormulario();
     const s = selecionado();
+    const linha = !s ? linhaDoCursor() : null;
+    if (linha && linha.no.tipo !== 'snippet') return renderResumoDoNo(linha.no);
     if (!s) {
       mostrarNoPainel(el('p', { classe: 'vazio-painel', texto: dados.snippets.length === 0 ? 'Nenhum snippet disponível ainda.' : 'Selecione um atalho na lista para ver os detalhes.' }));
       return undefined;
@@ -352,18 +480,24 @@
   async function recarregar({ selecionarTrigger } = {}) {
     const anterior = selecionado();
     dados = await api.listar();
-    montarCategorias();
+    arvore = montarArvore(dados.snippets);
     if (selecionarTrigger) {
       const novo = dados.snippets.find((s) => s.origem === 'pessoal' && s.trigger === selecionarTrigger);
-      if (novo) selecionadoId = novo.id;
+      if (novo) {
+        selecionadoId = novo.id;
+        cursor = chaveDoSnippet(novo.id);
+        // O atalho recém-salvo precisa estar à vista: abre a pasta Pessoal.
+        for (const chave of chavesDosAncestrais(arvore, novo.id)) abertos.add(chave);
+      }
     } else if (anterior && !dados.snippets.some((s) => s.id === selecionadoId)) {
       // O id muda se a posição do atalho mudou; procura o mesmo atalho de novo.
       const mesmo = dados.snippets.find((s) => s.origem === anterior.origem && s.trigger === anterior.trigger);
       selecionadoId = mesmo ? mesmo.id : null;
+      cursor = mesmo ? chaveDoSnippet(mesmo.id) : null;
     }
     renderFaixa();
     renderRodape();
-    aplicarFiltro();
+    atualizarLista();
   }
 
   // ---------------------------------------------------------------------
@@ -398,9 +532,13 @@
     if (evento.key === 'ArrowDown' || evento.key === 'ArrowUp') {
       evento.preventDefault();
       mover(evento.key === 'ArrowDown' ? 1 : -1);
+    } else if ((evento.key === 'ArrowRight' || evento.key === 'ArrowLeft') && !modoBusca) {
+      // Com o foco na caixa de busca (vazia), as setas laterais também abrem e fecham as pastas.
+      evento.preventDefault();
+      abrirOuFechar(evento.key === 'ArrowRight' ? 'direita' : 'esquerda');
     } else if (evento.key === 'Enter' && tag !== 'BUTTON') {
       evento.preventDefault();
-      copiar('texto');
+      confirmarLinha();
     }
   });
 
@@ -408,8 +546,7 @@
   // Início
   // ---------------------------------------------------------------------
 
-  $('busca').addEventListener('input', aplicarFiltro);
-  $('categoria').addEventListener('change', aplicarFiltro);
+  $('busca').addEventListener('input', aoMudarBusca);
   $('novo').addEventListener('click', abrirNovo);
   $('faixa-arquivo-abrir').addEventListener('click', abrirArquivo);
   api.aoMudar(() => {

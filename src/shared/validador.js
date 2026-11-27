@@ -20,7 +20,9 @@ const exemplosDeAtalho = (base) => PREFIXOS_TRIGGER.slice(0, 2).map((p) => `${p}
 
 const escaparParaRegex = (c) => c.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&');
 const PADRAO_TRIGGER = new RegExp(`^[${PREFIXOS_TRIGGER.map(escaparParaRegex).join('')}][a-z0-9]{2,30}$`);
-const CHAVES_RAIZ = ['matches', 'global_vars'];
+// Profundidade máxima das subpastas da pasta-fonte (Marco 10). Um arquivo mais fundo que isso é um erro.
+const NIVEIS_MAXIMOS_DE_PASTA = 3;
+const CHAVES_RAIZ =['matches', 'global_vars'];
 const CHAVES_SAIDA = ['replace', 'html', 'markdown'];
 const CHAVES_TRIGGER_PROIBIDAS = ['triggers', 'regex', 'imports'];
 // Variáveis permitidas nos snippets oficiais. shell e script ficam de fora de propósito:
@@ -33,8 +35,23 @@ const PADRAO_VARIAVEL = /\{\{\s*([^{}\s]+?)\s*\}\}/g;
 // Utilidades
 // ---------------------------------------------------------------------------
 
+// O "nome" de um arquivo é o caminho relativo à pasta-fonte, com "/" (ex.: "Medicamentos/Recursos/agravo.yml").
+// Aqui o caminho é só texto: o validador não usa path nem fs.
 function categoriaDe(nome) {
   return String(nome).replace(/\.ya?ml$/i, '');
+}
+
+// Pasta de um arquivo ("Medicamentos/Recursos"), ou "" quando ele está na raiz.
+function pastaDe(nome) {
+  const caminho = String(nome);
+  const i = caminho.lastIndexOf('/');
+  return i === -1 ? '' : caminho.slice(0, i);
+}
+
+// Quantas pastas há entre a raiz e o arquivo ("A/B/x.yml" = 2).
+function niveisDePasta(nome) {
+  const pasta = pastaDe(nome);
+  return pasta === '' ? 0 : pasta.split('/').length;
 }
 
 function ehTextoNaoVazio(valor) {
@@ -385,6 +402,7 @@ function validarMatch(item, lido, globais, problemas, contexto) {
   contexto.triggers.push({ trigger, arquivo, linha: linhaDaChave('trigger') });
   contexto.snippets.push({
     arquivo,
+    pasta: pastaDe(arquivo),
     categoria: lido.categoria,
     trigger,
     label: ehTextoNaoVazio(dados.label) ? dados.label : '',
@@ -436,7 +454,7 @@ function verificarConflitosOficiais(triggers, problemas) {
           arquivo: curto.arquivo,
           linha: curto.linha,
           regra: 'trigger-prefixo',
-          mensagem: `O atalho ${curto.trigger} é o começo de ${longo.trigger} (${onde(longo)}): ao digitar ${longo.trigger}, o ${curto.trigger} dispara antes. Renomeie um dos dois.`,
+          mensagem: `O atalho ${curto.trigger} (${onde(curto)}) é o começo de ${longo.trigger} (${onde(longo)}): ao digitar ${longo.trigger}, o ${curto.trigger} dispara antes. Renomeie um dos dois.`,
           // [o curto, o longo]
           triggers: [curto.trigger, longo.trigger],
           arquivos: [curto.arquivo, longo.arquivo],
@@ -479,6 +497,20 @@ function verificarConflitosPessoais(triggersOficiais, triggersPessoais, problema
 function validarBiblioteca(arquivos, opcoes = {}) {
   const problemas = { erros: [], avisos: [] };
   const contexto = { triggers: [], snippets: [], usadas: new Set() };
+
+  // Subpastas só até NIVEIS_MAXIMOS_DE_PASTA níveis. O arquivo continua sendo validado (para os outros
+  // erros também aparecerem), mas o erro impede a aplicação da pasta inteira.
+  for (const arquivo of arquivos || []) {
+    const niveis = niveisDePasta(arquivo.nome);
+    if (niveis > NIVEIS_MAXIMOS_DE_PASTA) {
+      problemas.erros.push({
+        arquivo: arquivo.nome,
+        linha: null,
+        regra: 'caminho-profundo',
+        mensagem: `O arquivo "${arquivo.nome}" está em ${niveis} níveis de pastas; o máximo é ${NIVEIS_MAXIMOS_DE_PASTA} (ex.: Medicamentos/Recursos/Agravos/agravo.yml). Mova-o para uma pasta mais próxima da raiz.`,
+      });
+    }
+  }
 
   // Lê todos os arquivos antes de validar, para que global_vars de um arquivo valham nos demais.
   const lidos = (arquivos || []).map((arquivo) => lerArquivo(arquivo, problemas, true));
@@ -540,5 +572,6 @@ module.exports = {
   TEXTO_FORMATO_TRIGGER,
   exemplosDeAtalho,
   PADRAO_TRIGGER,
+  NIVEIS_MAXIMOS_DE_PASTA,
   TIPOS_VAR_PERMITIDOS,
 };

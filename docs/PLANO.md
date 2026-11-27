@@ -709,7 +709,7 @@ Use para transformar os textos reais da CDSP em snippets. Pode ser feito com o S
 ````text
 Leia o CLAUDE.md e veja snippets/exemplos.yml como referência de formato.
 
-Converta os textos abaixo em snippets do Espanso para o arquivo <pasta-fonte>/<categoria>.yml (ex.: medicamentos.yml). Se o arquivo existir, acrescente sem alterar os matches existentes.
+Converta os textos abaixo em snippets do Espanso para o arquivo <pasta-fonte>/<pasta>/<categoria>.yml (ex.: Medicamentos/contestacao.yml; até 3 níveis de pastas, e a raiz também vale). Se o arquivo existir, acrescente sem alterar os matches existentes.
 
 Regras:
 - Trigger começando por um destes caracteres: / ; ! # = + (lista PREFIXOS_TRIGGER, em src/shared/validador.js), seguido de 2 a 30 letras minúsculas sem acento ou números, curto e fácil de lembrar. Escreva-o sempre entre aspas no YAML ("!cont"): sem aspas, ! e # quebram o arquivo. Nenhum trigger pode ser prefixo de outro com o mesmo caractere inicial, nem dos que já existem na pasta (/cont e ;cont convivem).

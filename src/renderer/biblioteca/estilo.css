@@ -58,7 +58,6 @@ body {
 }
 
 .busca { display: grid; gap: 6px; }
-.rotulo-categoria { color: var(--suave); font-size: 12px; margin-bottom: -4px; }
 
 input[type="search"], input[type="text"], select, textarea {
   width: 100%;
@@ -103,6 +102,19 @@ button.perigo-forte:hover:not(:disabled) { background: #861616; }
 .item-trigger { display: block; font-family: var(--mono); font-weight: 600; }
 .item-nome { display: block; overflow-wrap: anywhere; }
 .item-categoria { display: block; color: var(--suave); font-size: 12px; }
+
+/* Árvore (Marco 10): pastas e arquivos com seta e total; o recuo cresce a cada nível (no máximo 3 pastas + arquivo + snippet). */
+#lista li.n1 { padding-left: 26px; }
+#lista li.n2 { padding-left: 42px; }
+#lista li.n3 { padding-left: 58px; }
+#lista li.n4 { padding-left: 74px; }
+#lista li.n5 { padding-left: 90px; }
+#lista li.no { display: flex; align-items: baseline; gap: 6px; font-weight: 600; }
+#lista li.no-arquivo { font-weight: 500; }
+.seta { flex: none; width: 12px; color: var(--suave); font-size: 11px; }
+.no-nome { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.no-total { flex: none; color: var(--suave); font-size: 12px; font-weight: 400; }
+.caminho { margin: 6px 0 0; color: var(--suave); font-size: 13px; }
 .vazio-lista { padding: 16px 10px; color: var(--suave); cursor: default; }
 
 /* ---------- painel de detalhes e formulário ---------- */

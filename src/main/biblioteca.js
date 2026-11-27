@@ -70,6 +70,9 @@ async function montar(caminhos, agora) {
       visivel: {
         id: `${chave}::${n}`,
         arquivo: s.arquivo,
+        // Oficiais: "Medicamentos/Recursos" e "Medicamentos/Recursos/agravo" (a árvore da janela usa os dois).
+        // Pessoais: ficam na pasta "Pessoal", sem pasta de origem.
+        pasta: ehPessoal ? '' : s.pasta,
         categoria: ehPessoal ? CATEGORIA_PESSOAL : s.categoria,
         origem: ehPessoal ? 'pessoal' : 'oficial',
         trigger: s.trigger,
@@ -96,10 +99,8 @@ async function montar(caminhos, agora) {
 async function carregarBiblioteca(caminhos, { aplicadoEm = null, agora = new Date() } = {}) {
   const { itens, pessoal } = await montar(caminhos, agora);
   const snippets = itens.map((i) => i.visivel);
-  const categorias = [...new Set(snippets.filter((s) => s.origem === 'oficial').map((s) => s.categoria))].sort(comparar);
   return {
     snippets,
-    categorias: [...categorias, CATEGORIA_PESSOAL],
     erroPessoal: pessoal.valido ? null : pessoal.erro,
     atualizadoEmTexto: formatarDataHora(aplicadoEm),
     // Para a ajuda do formulário de atalho pessoal: a janela não importa o validador, então a lista (Marco 9) vem daqui.

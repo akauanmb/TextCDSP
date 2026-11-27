@@ -65,17 +65,62 @@ test('CLI: avisos aparecem separados dos erros e não derrubam o código de saí
   }
 });
 
-test('CLI: ignora arquivos iniciados por "_", outras extensões e subpastas', () => {
+test('CLI: ignora arquivos "_", outras extensões e pastas iniciadas por "_" ou "."', () => {
   const pasta = pastaTemporaria({
-    'ok.yml': `matches:\n${bloco('/cont')}`,
+    'ok.yml': `matches:
+${bloco('/cont')}`,
     '_rascunho.yml': 'isto nem é yaml: [',
     'notas.txt': 'texto qualquer',
-    'sub/outro.yml': 'isto também não: [',
+    '_historico/velho.yml': 'isto também não: [',
+    '_instalador/versao.json': '{}',
+    '.oculta/x.yml': 'nem este: [',
+    'sub/_rascunho.yml': 'nem este: [',
+    'sub/leia.txt': 'texto',
   });
   try {
     const { codigo, saida } = rodar(pasta);
     assert.equal(codigo, 0);
     assert.match(saida, /1 snippets, 0 erros, 0 avisos/);
+  } finally {
+    fs.rmSync(pasta, { recursive: true, force: true });
+  }
+});
+
+// Marco 10: subpastas entram, com o caminho relativo nas mensagens.
+test('CLI: lê as subpastas; _historico fica de fora (conta só os três primeiros arquivos)', () => {
+  const pasta = pastaTemporaria({
+    'exemplos.yml': `matches:
+${bloco('/ola')}`,
+    'Medicamentos/contestacao.yml': `matches:
+${bloco('/cont')}`,
+    'Medicamentos/Recursos/agravo.yml': `matches:
+${bloco('/agr')}`,
+    '_historico/velho.yml': `matches:
+${bloco('/cont')}`,
+  });
+  try {
+    const { codigo, saida } = rodar(pasta);
+    assert.equal(codigo, 0, saida);
+    assert.match(saida, /3 snippets, 0 erros, 0 avisos/);
+  } finally {
+    fs.rmSync(pasta, { recursive: true, force: true });
+  }
+});
+
+test('CLI: conflito entre pastas cita os dois caminhos; arquivo no 4º nível é caminho-profundo', () => {
+  const pasta = pastaTemporaria({
+    'raiz.yml': `matches:
+${bloco('/cont')}`,
+    'Medicamentos/contestacao.yml': `matches:
+${bloco('/contestacao')}`,
+    'A/B/C/D/x.yml': `matches:
+${bloco('/fundo')}`,
+  });
+  try {
+    const { codigo, saida } = rodar(pasta);
+    assert.equal(codigo, 1);
+    assert.match(saida, /raiz\.yml:2 \[trigger-prefixo\].*\(raiz\.yml:2\).*\(Medicamentos\/contestacao\.yml:2\)/);
+    assert.match(saida, /A\/B\/C\/D\/x\.yml \[caminho-profundo\]/);
   } finally {
     fs.rmSync(pasta, { recursive: true, force: true });
   }

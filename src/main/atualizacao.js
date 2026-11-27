@@ -6,7 +6,7 @@
 // Convenção na pasta-fonte (scripts/publicar.js grava):
 //   <fonte>\_instalador\versao.json   { "versao", "arquivo", "notas", "sha256" }  (src/shared/versaoInstalador.js)
 //   <fonte>\_instalador\<arquivo>.exe
-// A subpasta _instalador nunca entra na sincronização de snippets: lerFonte ignora subpastas.
+// A subpasta _instalador nunca entra na sincronização de snippets: lerFonte ignora pastas iniciadas por "_".
 //
 // A lógica de disco está aqui, sem Electron (os caminhos e as ações chegam por parâmetro), para testar com
 // pastas temporárias. Notificação, menu e encerramento do app ficam em index.js e bandeja.js.

@@ -15,6 +15,7 @@ const crypto = require('node:crypto');
 const { validarBiblioteca } = require('../shared/validador');
 
 const TEMPO_MAXIMO_LEITURA_MS = 20000;
+const NIVEIS_MAXIMOS_DE_LEITURA = 10;
 const ERROS_DE_RENOMEAR_TRANSITORIOS = ['EPERM', 'EBUSY', 'EACCES', 'ENOTEMPTY'];
 
 const dormir = (ms) => new Promise((resolver) => setTimeout(resolver, ms));
@@ -50,21 +51,31 @@ function descreverErroDeArquivo(erro) {
 // Leitura e hash
 // ---------------------------------------------------------------------------
 
-// Lê os .yml da pasta (sem entrar em subpastas; ignora arquivos iniciados por "_" e a pasta _historico).
-// Devolve [{ nome, conteudo }] em ordem de nome. Lança erro se a pasta estiver inacessível.
+const eArquivoYml = (e) => e.isFile() && /\.yml$/i.test(e.name) && !e.name.startsWith('_');
+// Pastas iniciadas por "_" (como _historico e _instalador) ou "." não fazem parte dos snippets.
+const eSubpastaDeSnippets = (e) => e.isDirectory() && !e.name.startsWith('_') && !e.name.startsWith('.');
+
+// Lê os .yml da pasta e de todas as subpastas. Ignora arquivos iniciados por "_", pastas iniciadas por "_" ou "."
+// e tudo que não for .yml. O "nome" de cada arquivo é o caminho relativo com "/" ("Medicamentos/contestacao.yml"),
+// também no Windows. Devolve [{ nome, conteudo }] em ordem de nome. Lança erro se alguma pasta estiver inacessível.
+// O limite de 3 níveis NÃO é aplicado aqui: é a regra caminho-profundo do validador. Aqui só há uma trava de
+// segurança (NIVEIS_MAXIMOS_DE_LEITURA) contra pastas absurdamente fundas.
 function lerFonte(pasta, { tempoMaximoMs = TEMPO_MAXIMO_LEITURA_MS } = {}) {
   return comTempoMaximo(
     (async () => {
-      const entradas = await fsp.readdir(pasta, { withFileTypes: true });
-      const nomes = entradas
-        .filter((e) => e.isFile() && /\.yml$/i.test(e.name) && !e.name.startsWith('_'))
-        .map((e) => e.name)
-        .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
       const arquivos = [];
-      for (const nome of nomes) {
-        arquivos.push({ nome, conteudo: await fsp.readFile(path.join(pasta, nome), 'utf8') });
+      async function percorrer(dir, prefixo, nivel) {
+        const entradas = await fsp.readdir(dir, { withFileTypes: true });
+        for (const e of entradas) {
+          if (eArquivoYml(e)) {
+            arquivos.push({ nome: `${prefixo}${e.name}`, conteudo: await fsp.readFile(path.join(dir, e.name), 'utf8') });
+          } else if (eSubpastaDeSnippets(e) && nivel < NIVEIS_MAXIMOS_DE_LEITURA) {
+            await percorrer(path.join(dir, e.name), `${prefixo}${e.name}/`, nivel + 1);
+          }
+        }
       }
-      return arquivos;
+      await percorrer(pasta, '', 0);
+      return arquivos.sort((a, b) => (a.nome < b.nome ? -1 : a.nome > b.nome ? 1 : 0));
     })(),
     tempoMaximoMs,
   );
@@ -78,10 +89,16 @@ function calcularHash(arquivos) {
   return hash.digest('hex');
 }
 
-async function temArquivosYml(pasta) {
+// Há algum .yml na pasta ou em qualquer subpasta? (match\oficial\ agora pode ter a árvore da pasta-fonte.)
+async function temArquivosYml(pasta, nivel = 0) {
   try {
     const entradas = await fsp.readdir(pasta, { withFileTypes: true });
-    return entradas.some((e) => e.isFile() && /\.yml$/i.test(e.name));
+    if (entradas.some((e) => e.isFile() && /\.yml$/i.test(e.name))) return true;
+    if (nivel >= NIVEIS_MAXIMOS_DE_LEITURA) return false;
+    for (const e of entradas) {
+      if (e.isDirectory() && (await temArquivosYml(path.join(pasta, e.name), nivel + 1))) return true;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -123,7 +140,11 @@ async function substituirPasta({ destino, staging, antigo, arquivos, renomear = 
   await limpar(staging);
   await fsp.mkdir(staging, { recursive: true });
   try {
-    for (const { nome, conteudo } of arquivos) await fsp.writeFile(path.join(staging, nome), conteudo, 'utf8');
+    for (const { nome, conteudo } of arquivos) {
+      const alvo = path.join(staging, nome);
+      await fsp.mkdir(path.dirname(alvo), { recursive: true }); // "nome" pode ter subpastas (Marco 10)
+      await fsp.writeFile(alvo, conteudo, 'utf8');
+    }
   } catch (erro) {
     await limpar(staging);
     throw erro;

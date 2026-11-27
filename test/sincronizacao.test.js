@@ -35,6 +35,17 @@ function escrever(pasta, arquivos) {
 
 const listar = (pasta) => (fs.existsSync(pasta) ? fs.readdirSync(pasta).sort() : []);
 
+// Todos os arquivos de uma pasta, recursivamente, como caminhos relativos com "/", em ordem.
+function arquivosDe(pasta, prefixo = '') {
+  if (!fs.existsSync(pasta)) return [];
+  const nomes = [];
+  for (const e of fs.readdirSync(pasta, { withFileTypes: true })) {
+    if (e.isDirectory()) nomes.push(...arquivosDe(path.join(pasta, e.name), `${prefixo}${e.name}/`));
+    else nomes.push(`${prefixo}${e.name}`);
+  }
+  return nomes.sort();
+}
+
 // Monta um ambiente completo: dados do app, pasta-fonte e sincronizador.
 function ambiente(t, arquivosFonte = { 'a.yml': yml(bloco('/cont'), bloco('/hoje')) }) {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'textcdsp-sync-'));
@@ -145,17 +156,156 @@ test('arquivo removido na fonte é removido de oficial\\', async (t) => {
   assert.deepEqual(listar(a.caminhos.ultimaValida), ['a.yml']);
 });
 
-test('ignora arquivos iniciados por _, a pasta _historico, subpastas e outras extensões', async (t) => {
+test('ignora arquivos iniciados por _, pastas _ e ., e outras extensões', async (t) => {
   const a = ambiente(t, {
     'ok.yml': yml(bloco('/cont')),
     '_rascunho.yml': 'isto nem é yaml: [',
     'notas.txt': 'texto',
     '_historico/2026-01-01_a.yml': 'isto também não: [',
-    'sub/outro.yml': 'nem isto: [',
+    '_instalador/versao.json': '{}',
+    '.oculta/x.yml': 'nem isto: [',
+    'sub/_rascunho.yml': 'nem isto: [',
+    'sub/leia.txt': 'texto',
   });
   const r = await a.sincronizador.sincronizar();
   assert.equal(r.status, 'atualizado');
-  assert.deepEqual(listar(a.caminhos.oficial), ['ok.yml']);
+  assert.deepEqual(arquivosDe(a.caminhos.oficial), ['ok.yml']);
+});
+
+// ---------------------------------------------------------------------------
+// Marco 10: subpastas
+// ---------------------------------------------------------------------------
+
+const ARVORE = () => ({
+  'exemplos.yml': yml(bloco('/hoje')),
+  'Medicamentos/contestacao.yml': yml(bloco('/cont')),
+  'Medicamentos/Recursos/agravo.yml': yml(bloco('/agravo')),
+});
+
+test('lerFonte: nomes são caminhos relativos com "/", em ordem, sem as pastas ignoradas', async (t) => {
+  const a = ambiente(t, { ...ARVORE(), '_historico/velho.yml': yml(bloco('/cont')), '_pasta/x.yml': yml(bloco('/x1')) });
+  const arquivos = await lerFonte(a.fonte);
+  assert.deepEqual(arquivos.map((x) => x.nome), ['Medicamentos/Recursos/agravo.yml', 'Medicamentos/contestacao.yml', 'exemplos.yml']);
+  assert.ok(arquivos.every((x) => !x.nome.includes('\\')));
+});
+
+test('lerFonte: trava de segurança em 10 níveis de pastas', async (t) => {
+  const nove = Array.from({ length: 10 }, (_, i) => `n${i}`).join('/');
+  const a = ambiente(t, { 'raiz.yml': yml(bloco('/a1')), [`${nove}/dentro.yml`]: yml(bloco('/b1')), [`${nove}/n10/fora.yml`]: yml(bloco('/c1')) });
+  const nomes = (await lerFonte(a.fonte)).map((x) => x.nome);
+  assert.ok(nomes.includes(`${nove}/dentro.yml`)); // 10 níveis: ainda lido
+  assert.ok(!nomes.some((n) => n.endsWith('fora.yml'))); // 11: ignorado
+});
+
+test('árvore com raiz e 2 níveis é aplicada igual, e também no cache', async (t) => {
+  const a = ambiente(t, ARVORE());
+  const r = await a.sincronizador.sincronizar();
+  assert.equal(r.status, 'atualizado');
+  assert.equal(r.totalSnippets, 3);
+  const esperado = ['Medicamentos/Recursos/agravo.yml', 'Medicamentos/contestacao.yml', 'exemplos.yml'];
+  assert.deepEqual(arquivosDe(a.caminhos.oficial), esperado);
+  assert.deepEqual(arquivosDe(a.caminhos.ultimaValida), esperado);
+  for (const nome of esperado) {
+    assert.equal(fs.readFileSync(path.join(a.caminhos.oficial, nome), 'utf8'), fs.readFileSync(path.join(a.fonte, nome), 'utf8'));
+  }
+  assert.deepEqual(listar(a.caminhos.cache), ['estado.json', 'ultima-valida']); // sem temporárias
+});
+
+test('_historico e _pasta ficam de fora de oficial\\ e do cache', async (t) => {
+  const a = ambiente(t, { ...ARVORE(), '_historico/velho.yml': 'isto nem é yaml: [', '_pasta/x.yml': 'nem isto: [' });
+  const r = await a.sincronizador.sincronizar();
+  assert.equal(r.status, 'atualizado');
+  assert.equal(r.totalSnippets, 3);
+  assert.deepEqual(listar(a.caminhos.oficial), ['Medicamentos', 'exemplos.yml']);
+  assert.ok(!arquivosDe(a.caminhos.ultimaValida).some((n) => n.startsWith('_')));
+});
+
+test('arquivo no 4º nível bloqueia a aplicação e mantém a versão anterior', async (t) => {
+  const a = ambiente(t, ARVORE());
+  await a.sincronizador.sincronizar();
+  const antes = arquivosDe(a.caminhos.oficial);
+  const estadoAntes = lerEstado(a.caminhos.estado);
+
+  escrever(a.fonte, { 'A/B/C/D/x.yml': yml(bloco('/fundo')) });
+  const r = await a.sincronizador.sincronizar();
+
+  assert.equal(r.status, 'erro-na-fonte');
+  const erro = r.erros.find((e) => e.regra === 'caminho-profundo');
+  assert.ok(erro);
+  assert.equal(erro.arquivo, 'A/B/C/D/x.yml');
+  assert.deepEqual(arquivosDe(a.caminhos.oficial), antes);
+  assert.equal(lerEstado(a.caminhos.estado).hash, estadoAntes.hash);
+  assert.equal(a.notificacoes.length, 1);
+
+  // Mover o arquivo para o 3º nível resolve.
+  fs.rmSync(path.join(a.fonte, 'A'), { recursive: true });
+  escrever(a.fonte, { 'A/B/C/x.yml': yml(bloco('/fundo')) });
+  const certo = await a.sincronizador.sincronizar();
+  assert.equal(certo.status, 'atualizado');
+  assert.ok(arquivosDe(a.caminhos.oficial).includes('A/B/C/x.yml'));
+});
+
+test('/cont na raiz e /contestacao em Medicamentos/: não aplica e a mensagem cita os dois caminhos', async (t) => {
+  const a = ambiente(t, { 'raiz.yml': yml(bloco('/cont')), 'Medicamentos/contestacao.yml': yml(bloco('/contestacao')) });
+  const r = await a.sincronizador.sincronizar();
+  assert.equal(r.status, 'erro-na-fonte');
+  const e = r.erros.find((x) => x.regra === 'trigger-prefixo');
+  assert.ok(e);
+  assert.match(e.mensagem, /raiz\.yml:\d+/);
+  assert.match(e.mensagem, /Medicamentos\/contestacao\.yml:\d+/);
+  assert.deepEqual(arquivosDe(a.caminhos.oficial), []);
+});
+
+test('arquivo movido de pasta na fonte sai do lugar antigo', async (t) => {
+  const a = ambiente(t, ARVORE());
+  await a.sincronizador.sincronizar();
+  fs.mkdirSync(path.join(a.fonte, 'Outros'));
+  fs.renameSync(path.join(a.fonte, 'Medicamentos', 'contestacao.yml'), path.join(a.fonte, 'Outros', 'contestacao.yml'));
+  const r = await a.sincronizador.sincronizar();
+  assert.equal(r.status, 'atualizado');
+  const esperado = ['Medicamentos/Recursos/agravo.yml', 'Outros/contestacao.yml', 'exemplos.yml'];
+  assert.deepEqual(arquivosDe(a.caminhos.oficial), esperado);
+  assert.deepEqual(arquivosDe(a.caminhos.ultimaValida), esperado);
+});
+
+test('o hash muda quando só o caminho muda', async (t) => {
+  const a = ambiente(t, { 'Medicamentos/x.yml': yml(bloco('/cont')) });
+  const antes = calcularHash(await lerFonte(a.fonte));
+  fs.mkdirSync(path.join(a.fonte, 'Outros'));
+  fs.renameSync(path.join(a.fonte, 'Medicamentos', 'x.yml'), path.join(a.fonte, 'Outros', 'x.yml'));
+  assert.notEqual(calcularHash(await lerFonte(a.fonte)), antes);
+  assert.notEqual(
+    calcularHash([{ nome: 'a/b.yml', conteudo: 'x' }]),
+    calcularHash([{ nome: 'a_b.yml', conteudo: 'x' }]),
+  );
+});
+
+test('hash igual com arquivos só em subpastas não reaplica (match\\oficial\\ conta como preenchida)', async (t) => {
+  const a = ambiente(t, { 'Medicamentos/contestacao.yml': yml(bloco('/cont')) });
+  const primeira = await a.sincronizador.sincronizar();
+  fs.writeFileSync(path.join(a.caminhos.oficial, 'marcador.txt'), 'x');
+  const segunda = await a.sincronizador.sincronizar();
+  assert.equal(segunda.aplicadoEm, primeira.aplicadoEm);
+  assert.ok(fs.existsSync(path.join(a.caminhos.oficial, 'marcador.txt')));
+});
+
+test('restauração do cache com subpastas', async (t) => {
+  const a = ambiente(t, ARVORE());
+  await a.sincronizador.sincronizar();
+  fs.rmSync(a.caminhos.oficial, { recursive: true, force: true });
+  assert.equal(await a.sincronizador.restaurarDoCache(), true);
+  assert.deepEqual(arquivosDe(a.caminhos.oficial), ['Medicamentos/Recursos/agravo.yml', 'Medicamentos/contestacao.yml', 'exemplos.yml']);
+  // Com a pasta preenchida só por subpastas, não restaura de novo.
+  fs.writeFileSync(path.join(a.caminhos.oficial, 'marcador.txt'), 'x');
+  assert.equal(await a.sincronizador.restaurarDoCache(), false);
+  assert.ok(fs.existsSync(path.join(a.caminhos.oficial, 'marcador.txt')));
+});
+
+test('testarFonte conta os arquivos das subpastas e acusa caminho-profundo', async (t) => {
+  const a = ambiente(t, { ...ARVORE(), 'A/B/C/D/x.yml': yml(bloco('/fundo')) });
+  const r = await testarFonte(a.fonte);
+  assert.equal(r.arquivos, 4);
+  assert.ok(r.erros.some((e) => e.regra === 'caminho-profundo'));
 });
 
 // ---------------------------------------------------------------------------

@@ -623,6 +623,56 @@ test('categoria: nome do arquivo sem .yml', () => {
   const r = validarBiblioteca([arq(lista(match('/a1')), 'medicamentos.yml')]);
   assert.equal(r.snippets[0].categoria, 'medicamentos');
   assert.equal(r.snippets[0].arquivo, 'medicamentos.yml');
+  assert.equal(r.snippets[0].pasta, ''); // na raiz
+});
+
+// Marco 10: o nome do arquivo é o caminho relativo, com "/".
+
+test('pasta e categoria: o caminho da pasta e o caminho do arquivo sem a extensão', () => {
+  const r = validarBiblioteca([
+    arq(lista(match('/a1')), 'exemplos.yml'),
+    arq(lista(match('/b1')), 'Medicamentos/contestacao.yml'),
+    arq(lista(match('/c1')), 'Medicamentos/Recursos/agravo.yml'),
+  ]);
+  const por = (t) => r.snippets.find((s) => s.trigger === t);
+  assert.deepEqual([por('/a1').pasta, por('/a1').categoria], ['', 'exemplos']);
+  assert.deepEqual([por('/b1').pasta, por('/b1').categoria], ['Medicamentos', 'Medicamentos/contestacao']);
+  assert.deepEqual([por('/c1').pasta, por('/c1').categoria], ['Medicamentos/Recursos', 'Medicamentos/Recursos/agravo']);
+  assert.equal(por('/c1').arquivo, 'Medicamentos/Recursos/agravo.yml');
+  assert.deepEqual(r.erros, []);
+});
+
+test('caminho-profundo: até 3 níveis de pastas é aceito; o 4º é erro e cita o caminho', () => {
+  for (const nome of ['a.yml', 'A/a.yml', 'A/B/a.yml', 'A/B/C/a.yml']) {
+    semProblemas(validarBiblioteca([arq(lista(match('/a1')), nome)]));
+  }
+  const r = validarBiblioteca([arq(lista(match('/a1')), 'A/B/C/D/x.yml')]);
+  assert.deepEqual(regras(r.erros), ['caminho-profundo']);
+  assert.equal(r.erros[0].arquivo, 'A/B/C/D/x.yml');
+  assert.equal(r.erros[0].linha, null);
+  assert.match(r.erros[0].mensagem, /A\/B\/C\/D\/x\.yml/);
+  assert.match(r.erros[0].mensagem, /4 níveis/);
+  assert.match(r.erros[0].mensagem, /máximo é 3/);
+  // Mais fundo ainda também é erro.
+  assert.deepEqual(regras(validarBiblioteca([arq(lista(match('/a1')), '1/2/3/4/5/6/x.yml')]).erros), ['caminho-profundo']);
+});
+
+test('caminho-profundo: o arquivo fundo continua sendo validado (os outros erros aparecem junto)', () => {
+  const r = validarBiblioteca([arq(lista(match('/a1')), 'raiz.yml'), arq(lista(match('/a1')), 'A/B/C/D/x.yml')]);
+  assert.deepEqual(regras(r.erros).sort(), ['caminho-profundo', 'trigger-duplicado']);
+});
+
+test('conflitos entre pastas citam o arquivo com o caminho relativo', () => {
+  const dup = validarBiblioteca([arq(lista(match('/cont')), 'raiz.yml'), arq(lista(match('/cont')), 'Medicamentos/contestacao.yml')]);
+  const d = doRegra(dup.erros, 'trigger-duplicado')[0];
+  assert.equal(d.arquivo, 'Medicamentos/contestacao.yml');
+  assert.match(d.mensagem, /raiz\.yml:2/);
+
+  const pre = validarBiblioteca([arq(lista(match('/cont')), 'raiz.yml'), arq(lista(match('/contestacao')), 'Medicamentos/contestacao.yml')]);
+  const p = doRegra(pre.erros, 'trigger-prefixo')[0];
+  assert.match(p.mensagem, /\/cont \(raiz\.yml:2\)/);
+  assert.match(p.mensagem, /\/contestacao \(Medicamentos\/contestacao\.yml:2\)/);
+  assert.deepEqual(p.arquivos, ['raiz.yml', 'Medicamentos/contestacao.yml']);
 });
 
 test('BOM no início do arquivo é tolerado', () => {

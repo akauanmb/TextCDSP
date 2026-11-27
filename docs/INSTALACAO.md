@@ -35,7 +35,7 @@ Em poucos segundos o menu do ícone mostra **Snippets atualizados**. Depois diss
 ## 3. Usar
 
 - Digite o atalho (por exemplo, `/hoje`) em qualquer lugar onde você escreve.
-- Para ver todos os atalhos, dê **dois cliques no ícone**. A janela **Biblioteca** tem busca e botões para copiar o atalho ou o texto.
+- Para ver todos os atalhos, dê **dois cliques no ícone**. A janela **Biblioteca** mostra os atalhos em pastas que abrem e fecham (clique, ou use as setas do teclado: para a direita abre, para a esquerda fecha). Ao digitar na busca, a lista mostra os resultados com o caminho de cada um, e buscar o nome de uma pasta encontra os atalhos dela. Há botões para copiar o atalho ou o texto.
 
 ## 4. Criar um atalho pessoal
 
@@ -68,6 +68,27 @@ Se a notificação passar despercebida, o item **Instalar versão X.Y.Z** contin
 2. Procure **TextCDSP** e escolha **Desinstalar**.
 
 Seus atalhos pessoais ficam guardados no computador, na pasta `%APPDATA%\TextCDSP` (cole esse endereço na barra do Explorador de Arquivos para abrir). Para apagar tudo de vez, apague essa pasta depois de desinstalar.
+
+## Para quem administra a pasta compartilhada
+
+A pasta de snippets pode ter **subpastas**, e a Biblioteca mostra a mesma organização, com pastas que abrem e fecham (cada pasta e cada arquivo mostram quantos snippets têm). Exemplo:
+
+```
+Pasta de snippets\
+  exemplos.yml                      (na raiz)
+  Medicamentos\
+    contestacao.yml
+    Recursos\
+      agravo.yml
+  _historico\                       (ignorada)
+```
+
+- **Até 3 níveis de subpastas.** `Medicamentos\Recursos\Agravos\interno.yml` está dentro do limite. Um arquivo em 4 níveis ou mais é um erro (`caminho-profundo`): a pasta inteira deixa de ser aplicada e os computadores continuam com a versão anterior, até você mover o arquivo.
+- **O que é ignorado:** arquivos que começam com `_`, pastas que começam com `_` ou `.` (por exemplo `_historico` e `_instalador`) e tudo que não termina em `.yml`.
+- **Os atalhos valem para a pasta toda.** Dois atalhos iguais, ou um que seja o começo de outro (`/cont` e `/contestacao`), são erro mesmo estando em pastas diferentes. A mensagem diz os dois caminhos.
+- **Mover um arquivo de pasta** não tem efeito além da organização: na sincronização seguinte ele sai do lugar antigo e aparece no novo.
+- Antes de publicar, confira com `npm run validar -- <pasta>`: ele lê as subpastas do mesmo jeito que o programa.
+- Os atalhos pessoais não têm pastas: ficam todos na pasta **Pessoal**, no fim da lista.
 
 ## Se algo não funcionar
 

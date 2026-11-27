@@ -1,12 +1,12 @@
 'use strict';
 
 // Valida uma pasta de snippets: node scripts/validar.js <pasta>   (ou: npm run validar -- <pasta>)
-// Lê os .yml da pasta (sem entrar em subpastas e ignorando arquivos iniciados por "_"),
-// imprime os problemas como "arquivo:linha [regra] mensagem" e sai com código 1 se houver erro.
+// Lê os .yml da pasta e das subpastas, com a MESMA função da sincronização (lerFonte): ignora arquivos
+// iniciados por "_", pastas iniciadas por "_" ou "." (_historico, _instalador) e o que não for .yml.
+// Imprime os problemas como "arquivo:linha [regra] mensagem" e sai com código 1 se houver erro.
 
-const fs = require('node:fs');
-const path = require('node:path');
 const { validarBiblioteca } = require('../src/shared/validador');
+const { lerFonte, descreverErroDeArquivo } = require('../src/main/sincronizacao');
 
 function falharUso(mensagem) {
   console.error(mensagem);
@@ -19,22 +19,16 @@ function formatar(problema) {
   return `${local} [${problema.regra}] ${problema.mensagem}`;
 }
 
-function principal() {
+async function principal() {
   const pasta = process.argv[2];
   if (!pasta) falharUso('Informe a pasta de snippets.');
 
-  let entradas;
+  let arquivos;
   try {
-    entradas = fs.readdirSync(pasta, { withFileTypes: true });
+    arquivos = await lerFonte(pasta);
   } catch (e) {
-    return falharUso(`Não foi possível ler a pasta "${pasta}": ${e.message}`);
+    return falharUso(`Não foi possível ler a pasta "${pasta}": ${descreverErroDeArquivo(e)}`);
   }
-
-  const arquivos = entradas
-    .filter((e) => e.isFile() && /\.yml$/i.test(e.name) && !e.name.startsWith('_'))
-    .map((e) => e.name)
-    .sort((a, b) => a.localeCompare(b))
-    .map((nome) => ({ nome, conteudo: fs.readFileSync(path.join(pasta, nome), 'utf8') }));
 
   const { erros, avisos, snippets } = validarBiblioteca(arquivos);
 
@@ -53,4 +47,7 @@ function principal() {
   process.exit(erros.length > 0 ? 1 : 0);
 }
 
-principal();
+principal().catch((e) => {
+  console.error(`Falha ao validar: ${e.message}`);
+  process.exit(2);
+});

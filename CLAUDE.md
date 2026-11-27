@@ -15,7 +15,7 @@ Leia este arquivo inteiro antes de qualquer tarefa. Se a tarefa contradisser alg
   - Controla o motor, sincroniza snippets e abre as janelas.
 - **Instalador:** electron-builder, alvo NSIS, por usuário e sem administrador.
 - **Snippets:** arquivos YAML no formato do Espanso.
-  - Os snippets oficiais vêm de uma pasta-fonte compartilhada.
+  - Os snippets oficiais vêm de uma pasta-fonte compartilhada, com subpastas de até 3 níveis (a Biblioteca as mostra como árvore). Pastas e arquivos iniciados por `_` (e pastas iniciadas por `.`) são ignorados.
   - Os pessoais ficam em `pessoal.yml`. Só o próprio usuário altera esse arquivo, à mão ou pela janela Biblioteca (texto simples). A sincronização e as atualizações do app nunca o sobrescrevem.
 
 ## Estrutura de pastas

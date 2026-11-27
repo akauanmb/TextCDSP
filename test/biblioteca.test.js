@@ -27,7 +27,11 @@ function ambiente(t, { oficiais = {}, pessoal = PESSOAL_INICIAL } = {}) {
   t.after(() => fs.rmSync(base, { recursive: true, force: true }));
   const caminhos = criarCaminhos({ empacotado: false, appPath: raiz, userData: path.join(base, 'dados') });
   fs.mkdirSync(caminhos.oficial, { recursive: true });
-  for (const [nome, conteudo] of Object.entries(oficiais)) fs.writeFileSync(path.join(caminhos.oficial, nome), conteudo);
+  for (const [nome, conteudo] of Object.entries(oficiais)) {
+    const destino = path.join(caminhos.oficial, nome);
+    fs.mkdirSync(path.dirname(destino), { recursive: true });
+    fs.writeFileSync(destino, conteudo);
+  }
   if (pessoal !== null) fs.writeFileSync(caminhos.pessoalYml, pessoal);
   return { caminhos, lerPessoal: () => fs.readFileSync(caminhos.pessoalYml, 'utf8') };
 }
@@ -46,8 +50,37 @@ test('lista os oficiais e marca os pessoais como "Pessoal"', async (t) => {
     ['/cont', 'oficial', 'medicamentos'],
     ['/ola', 'pessoal', 'Pessoal'],
   ]);
-  assert.deepEqual(r.categorias, ['medicamentos', 'Pessoal']);
+  assert.equal(r.categorias, undefined); // a lista suspensa de categorias saiu (Marco 10)
   assert.equal(r.erroPessoal, null);
+});
+
+test('Marco 10: oficiais em subpastas trazem pasta e categoria com o caminho; pessoais não têm pasta', async (t) => {
+  const a = ambiente(t, {
+    oficiais: {
+      'exemplos.yml': yml(bloco('/hoje')),
+      'Medicamentos/contestacao.yml': yml(bloco('/cont')),
+      'Medicamentos/Recursos/agravo.yml': yml(bloco('/agravo')),
+    },
+    pessoal: yml(bloco('/ola', 'Saudação', 'Olá')),
+  });
+  const r = await carregarBiblioteca(a.caminhos, { agora: hoje });
+  const por = (trigger) => r.snippets.find((s) => s.trigger === trigger);
+  assert.deepEqual([por('/hoje').pasta, por('/hoje').categoria], ['', 'exemplos']);
+  assert.deepEqual([por('/cont').pasta, por('/cont').categoria], ['Medicamentos', 'Medicamentos/contestacao']);
+  assert.deepEqual([por('/agravo').pasta, por('/agravo').categoria], ['Medicamentos/Recursos', 'Medicamentos/Recursos/agravo']);
+  assert.equal(por('/agravo').arquivo, 'Medicamentos/Recursos/agravo.yml');
+  assert.deepEqual([por('/ola').origem, por('/ola').pasta, por('/ola').categoria], ['pessoal', '', 'Pessoal']);
+});
+
+test('Marco 10: copiar e criar atalho pessoal funcionam com a árvore em subpastas', async (t) => {
+  const a = ambiente(t, { oficiais: { 'Medicamentos/Recursos/agravo.yml': yml(bloco('/agravo', 'Agravo', 'Texto do agravo')) } });
+  const lista = await carregarBiblioteca(a.caminhos);
+  const copia = await prepararCopia(a.caminhos, { id: lista.snippets[0].id, modo: 'texto' }, hoje);
+  assert.deepEqual([copia.ok, copia.texto], [true, 'Texto do agravo']);
+  // Um pessoal que conflita com um oficial de uma subpasta é bloqueado, citando o caminho.
+  const r = await salvarPessoal(a.caminhos, entrada({ trigger: '/agravos' }));
+  assert.equal(r.ok, false);
+  assert.match(r.erros.trigger, /\/agravo\b/);
 });
 
 test('um pessoal.yml só com comentários não gera snippets nem erro', async (t) => {
@@ -62,7 +95,7 @@ test('sem pessoal.yml e sem pasta oficial: lista vazia', async (t) => {
   fs.rmSync(a.caminhos.oficial, { recursive: true });
   const r = await carregarBiblioteca(a.caminhos);
   assert.deepEqual(r.snippets, []);
-  assert.deepEqual(r.categorias, ['Pessoal']);
+  assert.equal(r.categorias, undefined);
 });
 
 test('os dados do snippet: tipo, campos, preview completo (datas resolvidas) e rodapé', async (t) => {

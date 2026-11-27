@@ -234,6 +234,8 @@ Conclusões:
 - **Para o Marco 4:** pastas temporárias dentro de `match/` (`oficial.novo/`, `oficial.antigo/`) seriam carregadas se o Espanso as lesse no meio da troca. Prefira montar a pasta nova **fora** de `match/` (por exemplo em `<dados>\cache\`, no mesmo volume) e só depois renomeá-la para `match\oficial`. Evite também criá-la dentro de `.espanso\`, que o motor vigia por inteiro (P7). Na troca que testei (criar `oficial.novo`, renomear, apagar `oficial.antigo`, tudo em milissegundos) houve só uma recarga, mas não dependa disso.
 - A ordem em que o Espanso lista os matches não é estável.
 
+**Marco 10 (árvore de pastas, VERIFICADO):** numa cópia do motor, a pasta `match\oficial\` montada pela própria sincronização (`substituirPasta`) com `exemplos.yml`, `Medicamentos\contestacao.yml`, `Medicamentos\Recursos\agravo.yml` e `Medicamentos\Recursos\Agravos\interno.yml` (três níveis de subpastas) foi lida inteira: `espansod.exe match list -t` devolveu `/hoje`, `/cont`, `/agravo` e `/interno`. As pastas `_historico` e `_pasta` da fonte não são copiadas (a sincronização as ignora), então o Espanso nunca as vê. Que os atalhos de cada nível **expandem ao digitar** continua **NÃO VERIFICADO** até o teste manual.
+
 ---
 
 ## P7. Recarga automática ao mudar arquivos de `match/`

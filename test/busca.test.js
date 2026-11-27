@@ -50,18 +50,19 @@ test('texto vazio ou só espaços não filtra', () => {
   assert.equal(filtrarSnippets(s).length, s.length);
 });
 
-test('filtro por categoria; "Todas" e vazio não filtram', () => {
+// Marco 10: a categoria é o caminho do arquivo; buscar o nome de uma pasta encontra os snippets dela.
+test('buscar o nome de uma pasta (ou do arquivo) encontra os snippets dela', () => {
   const lista = [
-    { trigger: '/a1', label: 'A', preview: '', categoria: 'medicamentos' },
-    { trigger: '/b1', label: 'B', preview: '', categoria: 'Pessoal' },
-    { trigger: '/c1', label: 'C', preview: '', categoria: 'medicamentos' },
+    { trigger: '/a1', label: 'A', preview: '', categoria: 'Medicamentos/contestacao' },
+    { trigger: '/b1', label: 'B', preview: '', categoria: 'Medicamentos/Recursos/agravo' },
+    { trigger: '/c1', label: 'C', preview: '', categoria: 'exemplos' },
+    { trigger: '/d1', label: 'D', preview: '', categoria: 'Pessoal' },
   ];
-  assert.deepEqual(triggers(filtrarSnippets(lista, { categoria: 'medicamentos' })), ['/a1', '/c1']);
-  assert.deepEqual(triggers(filtrarSnippets(lista, { categoria: 'Pessoal' })), ['/b1']);
-  assert.equal(filtrarSnippets(lista, { categoria: 'Todas' }).length, 3);
-  assert.equal(filtrarSnippets(lista, { categoria: '' }).length, 3);
-  assert.deepEqual(triggers(filtrarSnippets(lista, { categoria: 'medicamentos', texto: '/c1' })), ['/c1']);
-  assert.deepEqual(filtrarSnippets(lista, { categoria: 'Pessoal', texto: '/c1' }), []);
+  assert.deepEqual(triggers(filtrarSnippets(lista, { texto: 'medicamentos' })), ['/a1', '/b1']);
+  assert.deepEqual(triggers(filtrarSnippets(lista, { texto: 'RECURSOS' })), ['/b1']);
+  assert.deepEqual(triggers(filtrarSnippets(lista, { texto: 'agravo' })), ['/b1']);
+  assert.deepEqual(triggers(filtrarSnippets(lista, { texto: 'pessoal' })), ['/d1']);
+  assert.deepEqual(triggers(filtrarSnippets(lista, { texto: 'medicamentos /a1' })), ['/a1']);
 });
 
 test('no navegador (sem module), o arquivo publica window.CDSPBusca', () => {
