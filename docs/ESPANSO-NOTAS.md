@@ -323,6 +323,39 @@ Outros subcomandos do `--help` (não usados): `cmd`, `edit`, `env-path`, `log`, 
 
 ---
 
+## P11. Atalhos iniciados por `;` `!` `#` `=` `+`
+
+**Resposta:** o Espanso **carrega** os seis caracteres (`/ ; ! # = +`) como início de trigger (VERIFICADO). Que cada um **expande ao digitar** está **NÃO VERIFICADO** até o teste manual do Marco 9.
+
+**Como verifiquei (VERIFICADO):** numa cópia do motor em `%TEMP%` (como no roteiro de teste manual, sem tocar em `vendor\`), com `config\default.yml` do app, um `base.yml` vazio e um arquivo `match\prefixos.yml` com um match por caractere (`/ola`, `;ola`, `!ola`, `#ola`, `=ola`, `+ola`, todos entre aspas). Comando e resultado:
+
+```
+> espansod.exe match list -j        (exit 0)
+[ { "triggers": ["/ola"], "replace": "texto-barra", "label": "Barra" },
+  { "triggers": [";ola"], ... }, { "triggers": ["!ola"], ... }, { "triggers": ["#ola"], ... },
+  { "triggers": ["=ola"], ... }, { "triggers": ["+ola"], ... } ]
+```
+
+`match list -t` também devolveu os seis triggers. Nenhum foi descartado, e a cópia foi apagada ao final.
+
+**Não subi o daemon neste teste:** havia um TextCDSP instalado em execução na máquina, com o `espansod.exe` dele (P4: um segundo Espanso não inicia). O `match list` não precisa do daemon (P10), então a carga ficou verificada. O efeito ao digitar fica para o teste manual.
+
+**Cuidado com o YAML: escreva o atalho sempre entre aspas.** Verificado com o validador:
+
+| Atalho no arquivo, sem aspas | Resultado |
+|---|---|
+| `trigger: !ola` | Erro: o `!` abre uma *tag* do YAML. O match fica sem trigger (`trigger-ausente`). |
+| `trigger: #ola` | Erro: o `#` começa um comentário. O match fica sem trigger (`trigger-ausente`). |
+| `trigger: ;ola`, `=ola`, `+ola`, `/ola` | Funcionam, mas use aspas em todos, por padrão. |
+
+O app grava o atalho pessoal sempre entre aspas duplas, então o problema só existe em arquivo escrito à mão. O modelo do `pessoal.yml` avisa disso.
+
+**Por que estes seis e não outros** (decisão do Marco 9, ver `docs/PLANO.md`): ficam fora as teclas mortas do teclado ABNT2 e do US-Internacional (`´ ` ~ ^ ¨ ' "`), que esperam a tecla seguinte; `- . , : _ & ? %`, comuns dentro de palavras, números e endereços; `@`, que abre o menu de menções do Google Docs; `\` (caminhos) e `*` (formatação automática). A lista está em `PREFIXOS_TRIGGER`, em `src/shared/validador.js`.
+
+**Para confirmar no teste manual (Google Docs e Bloco de Notas):** criar `;ola`, `!ola`, `#ola`, `=ola` e `+ola` pela Biblioteca e digitar cada um. O que não expandir sai de `PREFIXOS_TRIGGER` e é registrado aqui.
+
+---
+
 ## Roteiro de teste manual (a partir do zero)
 
 Use uma **cópia**, para não sujar `vendor\`: qualquer comando rodado de dentro de `vendor\` (até `service status`) grava log e pastas em `.espanso\` e `.espanso-runtime\`. Se isso acontecer, apague `vendor\` e rode `npm run baixar-espanso`. Não funciona com outro Espanso rodando (feche o instalado, se houver).

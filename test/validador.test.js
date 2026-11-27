@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { validarBiblioteca } = require('../src/shared/validador');
+const { validarBiblioteca, PREFIXOS_TRIGGER, PADRAO_TRIGGER } = require('../src/shared/validador');
 
 const raiz = path.resolve(__dirname, '..');
 
@@ -155,6 +155,85 @@ test('trigger-formato: padrões válidos', () => {
   for (const bom of ['/ab', '/cont', '/a1', '/123', `/${'a'.repeat(30)}`]) {
     semProblemas(valida(lista(match(bom))));
   }
+});
+
+// Marco 9: o atalho pode começar por qualquer caractere de PREFIXOS_TRIGGER.
+
+test('PREFIXOS_TRIGGER: a lista fixa de caracteres iniciais', () => {
+  assert.deepEqual([...PREFIXOS_TRIGGER], ['/', ';', '!', '#', '=', '+']);
+  assert.ok(Object.isFrozen(PREFIXOS_TRIGGER));
+});
+
+test('trigger-formato: um caso válido para cada caractere da lista', () => {
+  for (const prefixo of PREFIXOS_TRIGGER) {
+    for (const base of ['ola', 'ab', 'a1', '123', 'a'.repeat(30)]) {
+      semProblemas(valida(lista(match(`${prefixo}${base}`))));
+    }
+    // Os limites continuam valendo para qualquer caractere inicial.
+    for (const ruim of ['a', 'A', 'a'.repeat(31), 'Ola', 'ação', 'a-b']) {
+      assert.deepEqual(regras(valida(lista(match(`${prefixo}${ruim}`))).erros), ['trigger-formato'], `${prefixo}${ruim}`);
+    }
+  }
+});
+
+test('trigger-formato: sem caractere inicial da lista, ou com outro caractere, é erro', () => {
+  const ruins = {
+    'letra': 'cont',
+    'número': '1cont',
+    'espaço': ' cont',
+    '@': '@cont',
+    '-': '-cont',
+    '.': '.cont',
+    'acento agudo': '´cont',
+    'til': '~cont',
+    'circunflexo': '^cont',
+    'apóstrofo': "'cont",
+    'crase': '`cont',
+    '*': '*cont',
+    '/ duplicada': '//cont',
+    'prefixo no meio': '/co;nt',
+  };
+  for (const [nome, ruim] of Object.entries(ruins)) {
+    assert.deepEqual(regras(valida(lista(match(ruim))).erros), ['trigger-formato'], nome);
+  }
+});
+
+test('PADRAO_TRIGGER aceita só os caracteres da lista: confere toda a pontuação ASCII', () => {
+  for (let codigo = 33; codigo <= 126; codigo += 1) {
+    const c = String.fromCharCode(codigo);
+    if (/[a-zA-Z0-9]/.test(c)) continue;
+    assert.equal(PADRAO_TRIGGER.test(`${c}ola`), PREFIXOS_TRIGGER.includes(c), `caractere ${c}`);
+  }
+});
+
+test('trigger-formato: a mensagem cita os caracteres permitidos', () => {
+  const [erro] = valida(lista(match('@cont'))).erros;
+  assert.equal(erro.regra, 'trigger-formato');
+  assert.match(erro.mensagem, /comece com um destes caracteres: \/ ; ! # = \+/);
+  assert.match(erro.mensagem, /2 a 30 letras minúsculas sem acento ou números/);
+  assert.match(erro.mensagem, /"@cont"/);
+});
+
+test('trigger-prefixo: o mesmo caractere inicial conflita (;cont e ;contestacao)', () => {
+  for (const prefixo of PREFIXOS_TRIGGER) {
+    const r = valida(lista(match(`${prefixo}cont`), match(`${prefixo}contestacao`)));
+    const e = doRegra(r.erros, 'trigger-prefixo');
+    assert.equal(e.length, 1, prefixo);
+    assert.deepEqual(e[0].triggers, [`${prefixo}cont`, `${prefixo}contestacao`]);
+  }
+});
+
+test('caracteres iniciais diferentes nunca conflitam (/cont e ;cont convivem)', () => {
+  semProblemas(valida(lista(match('/cont'), match(';cont'))));
+  // Os seis juntos, com o mesmo texto.
+  semProblemas(valida(lista(...PREFIXOS_TRIGGER.map((p) => match(`${p}cont`)))));
+  // "/cont" não é o começo de ";contestacao": o caractere inicial já os separa.
+  semProblemas(valida(lista(match('/cont'), match(';contestacao'))));
+});
+
+test('trigger-duplicado: o mesmo texto com o mesmo caractere é duplicado; com outro, não', () => {
+  assert.equal(doRegra(valida(lista(match(';cont'), match(';cont', '', 'Outro'))).erros, 'trigger-duplicado').length, 1);
+  semProblemas(valida(lista(match(';cont'), match('!cont', '', 'Outro'))));
 });
 
 // ---------------------------------------------------------------------------

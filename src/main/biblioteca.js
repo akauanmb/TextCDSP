@@ -9,7 +9,7 @@
 const fs = require('node:fs');
 const fsp = fs.promises;
 const path = require('node:path');
-const { validarBiblioteca } = require('../shared/validador');
+const { validarBiblioteca, PREFIXOS_TRIGGER, exemplosDeAtalho } = require('../shared/validador');
 const {
   ErroPessoal,
   validarCamposPessoais,
@@ -102,6 +102,9 @@ async function carregarBiblioteca(caminhos, { aplicadoEm = null, agora = new Dat
     categorias: [...categorias, CATEGORIA_PESSOAL],
     erroPessoal: pessoal.valido ? null : pessoal.erro,
     atualizadoEmTexto: formatarDataHora(aplicadoEm),
+    // Para a ajuda do formulário de atalho pessoal: a janela não importa o validador, então a lista (Marco 9) vem daqui.
+    prefixosTrigger: [...PREFIXOS_TRIGGER],
+    exemploAtalho: exemplosDeAtalho('ola'),
   };
 }
 

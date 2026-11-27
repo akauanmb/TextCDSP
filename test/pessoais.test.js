@@ -10,7 +10,7 @@ const {
   lerPessoais,
   aplicarAlteracaoPessoal: aplicar,
 } = require('../src/shared/pessoais');
-const { validarBiblioteca } = require('../src/shared/validador');
+const { validarBiblioteca, PREFIXOS_TRIGGER } = require('../src/shared/validador');
 const { PESSOAL_INICIAL } = require('../src/main/motor');
 
 // ---------------------------------------------------------------------------
@@ -338,6 +338,67 @@ test('normalizarTrigger: minúsculas, sem espaços nas pontas e com a barra inic
   assert.equal(normalizarTrigger(''), '');
   assert.equal(normalizarTrigger('   '), '');
   assert.equal(normalizarTrigger(null), '');
+});
+
+test('normalizarTrigger (Marco 9): "ola" vira "/ola"; os caracteres da lista ficam como estão', () => {
+  assert.equal(normalizarTrigger('ola'), '/ola');
+  assert.equal(normalizarTrigger('1a'), '/1a');
+  assert.equal(normalizarTrigger('Ação'), '/ação'); // letra com acento: ganha a barra e a validação recusa o acento
+  for (const prefixo of PREFIXOS_TRIGGER) {
+    assert.equal(normalizarTrigger(`${prefixo}ola`), `${prefixo}ola`);
+    assert.equal(normalizarTrigger(`  ${prefixo}OLA `), `${prefixo}ola`);
+  }
+});
+
+test('normalizarTrigger (Marco 9): começo fora da lista não ganha barra (a validação recusa)', () => {
+  for (const ruim of ['@ola', '-ola', '.ola', '´ola', '~ola', '^ola', "'ola", '*ola', '\\ola', '_ola']) {
+    assert.equal(normalizarTrigger(ruim), ruim);
+  }
+});
+
+test('validarCamposPessoais (Marco 9): cada caractere da lista é aceito', () => {
+  for (const prefixo of PREFIXOS_TRIGGER) {
+    const { valor, erros } = validarCamposPessoais({ trigger: `${prefixo}Ola`, label: 'x', texto: 'y' });
+    assert.deepEqual(erros, {}, prefixo);
+    assert.equal(valor.trigger, `${prefixo}ola`);
+  }
+});
+
+test('validarCamposPessoais (Marco 9): "@ola" é recusado e a mensagem cita os caracteres permitidos', () => {
+  const { valor, erros } = validarCamposPessoais({ trigger: '@ola', label: 'x', texto: 'y' });
+  assert.equal(valor.trigger, '@ola'); // não virou "/@ola"
+  assert.match(erros.trigger, /comece com um destes caracteres: \/ ; ! # = \+/);
+  assert.match(erros.trigger, /\/ola ou ;ola/);
+  assert.equal(erros.label, undefined);
+  assert.equal(erros.texto, undefined);
+  assert.match(validarCamposPessoais({ trigger: '', label: 'x', texto: 'y' }).erros.trigger, /\/ola ou ;ola/);
+});
+
+test('atalhos com cada caractere da lista: gravam entre aspas, o YAML volta igual e o validador aceita', () => {
+  for (const prefixo of PREFIXOS_TRIGGER) {
+    const trigger = `${prefixo}ola`;
+    const novo = criar(PESSOAL_INICIAL, trigger, 'Saudação', 'Olá!\nTudo bem?');
+    assert.ok(novo.includes(`trigger: ${JSON.stringify(trigger)}`), `${trigger} deve ir entre aspas duplas`);
+    const lido = lerPessoais(novo);
+    assert.equal(lido.valido, true, trigger);
+    assert.equal(lido.matches[0].trigger, trigger);
+    assert.equal(lido.matches[0].editavel, true);
+    assert.equal(lido.matches[0].texto, 'Olá!\nTudo bem?');
+    const v = validarBiblioteca([{ nome: 'pessoal.yml', conteudo: novo }]);
+    assert.deepEqual(v.erros, [], trigger);
+    assert.deepEqual(v.snippets.map((s) => s.trigger), [trigger]);
+    // Editar para outro caractere e excluir também funcionam.
+    const outro = `${PREFIXOS_TRIGGER[(PREFIXOS_TRIGGER.indexOf(prefixo) + 1) % PREFIXOS_TRIGGER.length]}ola`;
+    const editado = aplicar(novo, { tipo: 'editar', triggerOriginal: trigger, trigger: outro, label: 'Saudação', texto: 'oi' });
+    assert.equal(lerPessoais(editado).matches[0].trigger, outro);
+    assert.deepEqual(lerPessoais(aplicar(editado, { tipo: 'excluir', triggerOriginal: outro })).matches, []);
+  }
+});
+
+test('o modelo inicial do pessoal.yml cita a lista de caracteres e pede aspas', () => {
+  assert.match(PESSOAL_INICIAL, /começa com um destes caracteres: \/ ; ! # = \+/);
+  assert.match(PESSOAL_INICIAL, /sempre entre aspas/);
+  assert.deepEqual(lerPessoais(PESSOAL_INICIAL), { valido: true, erro: null, matches: [] });
 });
 
 test('validarCamposPessoais: campos válidos', () => {

@@ -41,12 +41,16 @@ Em poucos segundos o menu do ícone mostra **Snippets atualizados**. Depois diss
 
 1. Abra a Biblioteca e clique em **Novo atalho pessoal**.
 2. Preencha:
-   - **Atalho:** por exemplo, `/ola`. Começa com `/` e tem de 2 a 30 letras minúsculas ou números.
+   - **Atalho:** por exemplo, `/ola` ou `;ola`. Começa com um destes caracteres: `/` `;` `!` `#` `=` `+`, seguido de 2 a 30 letras minúsculas (sem acento) ou números. Se você digitar só `ola`, o programa acrescenta o `/`.
    - **Nome:** como o atalho aparece na lista.
    - **Texto:** o que será inserido. Pode ter várias linhas.
 3. Clique em **Salvar**. Em poucos segundos o atalho já funciona.
 
-O atalho não pode ser igual ao início de outro atalho (por exemplo, `/ola` e `/olamundo`), e o texto não pode conter `{{` nem `}}`. Se algo estiver errado, a janela avisa ao lado do campo.
+Outros caracteres, como `@`, `-`, `.`, `\` ou as teclas de acento (`´` `` ` `` `~` `^`), não podem abrir um atalho: o Google Docs e o teclado dão outro uso a eles. A janela recusa e mostra a lista dos permitidos.
+
+O atalho não pode ser igual ao início de outro atalho com o mesmo caractere inicial (por exemplo, `/ola` e `/olamundo`). Atalhos que começam por caracteres diferentes não se atrapalham: `/ola` e `;ola` podem existir juntos. O texto não pode conter `{{` nem `}}`. Se algo estiver errado, a janela avisa ao lado do campo.
+
+Se você escrever o atalho direto no arquivo `pessoal.yml`, ponha-o **sempre entre aspas** (`trigger: "!ola"`). Sem aspas, `!` e `#` quebram o arquivo.
 
 Para mudar ou apagar, selecione o atalho na lista e clique em **Editar** ou **Excluir**.
 

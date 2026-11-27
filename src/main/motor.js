@@ -12,6 +12,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, execFile } = require('node:child_process');
+const { TEXTO_PREFIXOS_TRIGGER, exemplosDeAtalho } = require('../shared/validador');
 
 const DEFAULT_YML = 'show_icon: false\nshow_notifications: false\n';
 
@@ -40,7 +41,9 @@ const PESSOAL_INICIAL = [
   '#     replace: "Olá, tudo bem?"',
   '#',
   '# Regras:',
-  '#   - O atalho começa com "/" e tem de 2 a 30 letras minúsculas ou números (ex.: /ola).',
+  `#   - O atalho começa com um destes caracteres: ${TEXTO_PREFIXOS_TRIGGER}`,
+  `#     e tem de 2 a 30 letras minúsculas ou números (ex.: ${exemplosDeAtalho('ola')}).`,
+  '#   - Escreva o atalho sempre entre aspas: sem elas, "#" e "!" não funcionam no arquivo.',
   '#   - Não use um atalho que seja o começo de outro (ex.: /ola e /olamundo).',
   '#   - Indente só com espaços, nunca com tab.',
   '#   - Depois de salvar, o atalho passa a valer em poucos segundos.',

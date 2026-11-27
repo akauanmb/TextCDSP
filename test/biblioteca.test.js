@@ -9,6 +9,7 @@ const { criarCaminhos } = require('../src/main/caminhos');
 const { PESSOAL_INICIAL } = require('../src/main/motor');
 const { carregarBiblioteca, prepararCopia, salvarPessoal, excluirPessoal } = require('../src/main/biblioteca');
 const { lerPessoais } = require('../src/shared/pessoais');
+const { filtrarSnippets } = require('../src/shared/busca');
 
 const raiz = path.resolve(__dirname, '..');
 const hoje = new Date(2026, 10, 26, 9, 5);
@@ -132,6 +133,42 @@ test('criar /ola com texto de 3 linhas e acentos: grava, a Biblioteca lista e o 
   const lista = await carregarBiblioteca(a.caminhos);
   assert.equal(lista.snippets[0].trigger, '/ola');
   assert.equal(lista.snippets[0].previewCompleto, texto);
+});
+
+test('Marco 9: a lista entregue à janela traz os caracteres iniciais e o exemplo', async (t) => {
+  const r = await carregarBiblioteca(ambiente(t).caminhos);
+  assert.deepEqual(r.prefixosTrigger, ['/', ';', '!', '#', '=', '+']);
+  assert.equal(r.exemploAtalho, '/ola ou ;ola');
+});
+
+test('Marco 9: criar ;ola, !ola, #ola, =ola e +ola; a Biblioteca lista todos e a busca por ";ola" o encontra', async (t) => {
+  const a = ambiente(t);
+  for (const trigger of [';ola', '!ola', '#ola', '=ola', '+ola']) {
+    const r = await salvarPessoal(a.caminhos, entrada({ trigger, label: `Saudação ${trigger}` }));
+    assert.deepEqual(r, { ok: true, trigger }, trigger);
+  }
+  const lista = await carregarBiblioteca(a.caminhos);
+  assert.equal(lista.erroPessoal, null);
+  assert.deepEqual(lista.snippets.map((s) => s.trigger).sort(), ['!ola', '#ola', '+ola', ';ola', '=ola']);
+  const achados = filtrarSnippets(lista.snippets, { texto: ';ola' });
+  assert.deepEqual(achados.map((s) => s.trigger), [';ola']);
+});
+
+test('Marco 9: "@ola" é recusado, sem virar "/@ola", e a mensagem cita os caracteres', async (t) => {
+  const a = ambiente(t);
+  const r = await salvarPessoal(a.caminhos, entrada({ trigger: '@ola' }));
+  assert.equal(r.ok, false);
+  assert.match(r.erros.trigger, /comece com um destes caracteres: \/ ; ! # = \+/);
+  assert.equal(a.lerPessoal(), PESSOAL_INICIAL); // nada foi gravado
+});
+
+test('Marco 9: /cont oficial e ;cont pessoal convivem; ;cont e ;contestacao não', async (t) => {
+  const a = ambiente(t, { oficiais: { 'm.yml': yml(bloco('/cont'), bloco(';contrato')) } });
+  assert.deepEqual(await salvarPessoal(a.caminhos, entrada({ trigger: ';cont' })).then((r) => r.ok), false); // ;cont é começo de ;contrato
+  assert.equal((await salvarPessoal(a.caminhos, entrada({ trigger: '!cont' }))).ok, true); // outro caractere inicial: sem conflito
+  const r = await salvarPessoal(a.caminhos, entrada({ trigger: ';contratos' }));
+  assert.equal(r.ok, false); // ;contrato é começo de ;contratos
+  assert.match(r.erros.trigger, /;contrato\b/);
 });
 
 test('criar normaliza o atalho (minúsculas e barra inicial)', async (t) => {

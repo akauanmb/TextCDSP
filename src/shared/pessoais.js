@@ -5,7 +5,7 @@
 // matches escritos à mão. Não acessa disco: recebe e devolve o texto do arquivo.
 
 const { parseDocument, LineCounter, Scalar, isMap, isSeq, isScalar } = require('yaml');
-const { PADRAO_TRIGGER } = require('./validador');
+const { PADRAO_TRIGGER, PREFIXOS_TRIGGER, TEXTO_FORMATO_TRIGGER, exemplosDeAtalho } = require('./validador');
 
 const CHAVES_EDITAVEIS = ['trigger', 'label', 'replace'];
 
@@ -28,10 +28,14 @@ class ErroPessoal extends Error {
 // Formulário
 // ---------------------------------------------------------------------------
 
-// Minúsculas, sem espaços nas pontas e com a barra inicial.
+// Minúsculas e sem espaços nas pontas. Só acrescenta a barra inicial quando a pessoa começou por uma letra
+// ou um número ("ola" vira "/ola"). Um atalho que já começa por um caractere permitido fica como está, e um
+// que começa por qualquer outro caractere (ex.: "@ola") também: a validação o recusa, em vez de o app
+// escondê-lo atrás de uma barra ("/@ola").
 function normalizarTrigger(entrada) {
   const t = String(entrada == null ? '' : entrada).trim().toLowerCase();
-  return t === '' || t.startsWith('/') ? t : `/${t}`;
+  if (t === '' || PREFIXOS_TRIGGER.includes(t[0])) return t;
+  return /^[\p{L}\p{N}]/u.test(t) ? `/${t}` : t;
 }
 
 /**
@@ -47,9 +51,9 @@ function validarCamposPessoais({ trigger, label, texto } = {}) {
   };
 
   if (valor.trigger === '') {
-    erros.trigger = 'Informe o atalho (por exemplo, /ola).';
+    erros.trigger = `Informe o atalho (por exemplo, ${exemplosDeAtalho('ola')}).`;
   } else if (!PADRAO_TRIGGER.test(valor.trigger)) {
-    erros.trigger = 'O atalho deve ser "/" seguida de 2 a 30 letras minúsculas sem acento ou números (por exemplo, /ola).';
+    erros.trigger = `Atalho inválido: ${TEXTO_FORMATO_TRIGGER} (por exemplo, ${exemplosDeAtalho('ola')}).`;
   }
   if (valor.label === '') erros.label = 'Informe o nome do atalho (ele aparece na lista e na busca).';
   if (valor.texto.trim() === '') erros.texto = 'Escreva o texto que o atalho vai inserir.';

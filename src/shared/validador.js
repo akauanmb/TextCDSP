@@ -6,7 +6,20 @@
 
 const { parseDocument, LineCounter, isMap, isSeq, isScalar } = require('yaml');
 
-const PADRAO_TRIGGER = /^\/[a-z0-9]{2,30}$/;
+// Caracteres com que um atalho pode começar (Marco 9). É a ÚNICA lista: nenhum outro módulo repete estes
+// caracteres; quem precisar deles (mensagens, ajuda da janela) importa daqui ou recebe por parâmetro.
+// Ficam de fora de propósito: letras, números, espaço, teclas mortas do teclado (´ ` ~ ^ ¨ ' "), caracteres
+// comuns em palavras e endereços (- . , : _ & ? %), "@" (menu de menções do Google Docs), "\" e "*".
+const PREFIXOS_TRIGGER = Object.freeze(['/', ';', '!', '#', '=', '+']);
+const TEXTO_PREFIXOS_TRIGGER = PREFIXOS_TRIGGER.join(' ');
+// Explica o formato nas mensagens de erro (validador e formulário de atalho pessoal).
+const TEXTO_FORMATO_TRIGGER = `comece com um destes caracteres: ${TEXTO_PREFIXOS_TRIGGER}, seguido de 2 a 30 letras minúsculas sem acento ou números`;
+
+// "/ola ou ;ola": os dois primeiros caracteres da lista, para os exemplos das mensagens e da ajuda.
+const exemplosDeAtalho = (base) => PREFIXOS_TRIGGER.slice(0, 2).map((p) => `${p}${base}`).join(' ou ');
+
+const escaparParaRegex = (c) => c.replace(/[.*+?^${}()|[\]\\/-]/g, '\\$&');
+const PADRAO_TRIGGER = new RegExp(`^[${PREFIXOS_TRIGGER.map(escaparParaRegex).join('')}][a-z0-9]{2,30}$`);
 const CHAVES_RAIZ = ['matches', 'global_vars'];
 const CHAVES_SAIDA = ['replace', 'html', 'markdown'];
 const CHAVES_TRIGGER_PROIBIDAS = ['triggers', 'regex', 'imports'];
@@ -299,7 +312,7 @@ function validarMatch(item, lido, globais, problemas, contexto) {
   } else {
     trigger = dados.trigger;
     if (!PADRAO_TRIGGER.test(trigger)) {
-      erro('trigger-formato', `O atalho "${trigger}" está fora do padrão: use "/" seguida de 2 a 30 letras minúsculas sem acento ou números (ex.: /cont).`, linhaDaChave('trigger'));
+      erro('trigger-formato', `O atalho "${trigger}" está fora do padrão: ${TEXTO_FORMATO_TRIGGER} (ex.: ${exemplosDeAtalho('cont')}).`, linhaDaChave('trigger'));
     }
   }
   const nomeDoMatch = trigger ? `"${trigger}" ` : '';
@@ -519,4 +532,13 @@ function validarBiblioteca(arquivos, opcoes = {}) {
   return { erros: problemas.erros, avisos: problemas.avisos, snippets: contexto.snippets };
 }
 
-module.exports = { validarBiblioteca, htmlParaTexto, PADRAO_TRIGGER, TIPOS_VAR_PERMITIDOS };
+module.exports = {
+  validarBiblioteca,
+  htmlParaTexto,
+  PREFIXOS_TRIGGER,
+  TEXTO_PREFIXOS_TRIGGER,
+  TEXTO_FORMATO_TRIGGER,
+  exemplosDeAtalho,
+  PADRAO_TRIGGER,
+  TIPOS_VAR_PERMITIDOS,
+};

@@ -712,7 +712,7 @@ Leia o CLAUDE.md e veja snippets/exemplos.yml como referência de formato.
 Converta os textos abaixo em snippets do Espanso para o arquivo <pasta-fonte>/<categoria>.yml (ex.: medicamentos.yml). Se o arquivo existir, acrescente sem alterar os matches existentes.
 
 Regras:
-- Trigger no padrão /[a-z0-9]{2,30}, curto e fácil de lembrar. Nenhum trigger pode ser prefixo de outro, nem dos que já existem na pasta.
+- Trigger começando por um destes caracteres: / ; ! # = + (lista PREFIXOS_TRIGGER, em src/shared/validador.js), seguido de 2 a 30 letras minúsculas sem acento ou números, curto e fácil de lembrar. Escreva-o sempre entre aspas no YAML ("!cont"): sem aspas, ! e # quebram o arquivo. Nenhum trigger pode ser prefixo de outro com o mesmo caractere inicial, nem dos que já existem na pasta (/cont e ;cont convivem).
 - Todo match tem label descritivo.
 - Partes variáveis (nome, CNJ, medicamento, datas...) viram campos de formulário. Escolhas entre parágrafos alternativos viram var choice com label curto e id contendo o parágrafo.
 - Se o texto tiver formatação (negrito, listas), use html. Caso contrário, replace.

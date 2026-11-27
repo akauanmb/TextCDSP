@@ -23,7 +23,14 @@
     escolha: 'Escolha de parágrafo',
   };
 
-  let dados = { snippets: [], categorias: [], erroPessoal: null, atualizadoEmTexto: null };
+  let dados = { snippets: [], categorias: [], erroPessoal: null, atualizadoEmTexto: null, prefixosTrigger: [], exemploAtalho: '' };
+
+  // Ajuda do campo Atalho. A lista de caracteres vem do processo principal (validador.js), que é a única fonte dela.
+  function ajudaDoAtalho() {
+    const lista = dados.prefixosTrigger.join(' ');
+    const exemplo = dados.exemploAtalho ? ` Exemplo: ${dados.exemploAtalho}` : '';
+    return `Comece com um destes caracteres: ${lista}, seguido de 2 a 30 letras minúsculas sem acento ou números.${exemplo}`;
+  }
   let visiveis = [];
   let selecionadoId = null;
   let formulario = null; // { modo: "criar"|"editar", triggerOriginal, valores, erros, arquivoInvalido }
@@ -281,7 +288,7 @@
     mostrarNoPainel(
       el('h2', { texto: f.modo === 'criar' ? 'Novo atalho pessoal' : 'Editar atalho pessoal' }),
       el('p', { classe: 'dica', texto: 'Atalhos pessoais inserem um texto simples (sem campos, escolhas ou formatação). Ficam só neste computador.' }),
-      campoDoFormulario('Atalho', 'campo-trigger', trigger, 'Começa com "/" e tem de 2 a 30 letras minúsculas ou números. Exemplo: /ola', erros.trigger),
+      campoDoFormulario('Atalho', 'campo-trigger', trigger, ajudaDoAtalho(), erros.trigger),
       campoDoFormulario('Nome', 'campo-label', nome, 'Aparece na lista e na busca. Exemplo: Saudação', erros.label),
       campoDoFormulario('Texto', 'campo-texto', texto, 'O texto que será inserido, com as quebras de linha que você digitar. Não use "{{" nem "}}".', erros.texto),
       geral.length > 0 ? el('div', { classe: 'erro-geral', role: 'alert' }, geral) : null,
