@@ -51,6 +51,8 @@ function ambiente(t, arquivosFonte = { 'a.yml': yml(bloco('/cont'), bloco('/hoje
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'textcdsp-sync-'));
   t.after(() => fs.rmSync(base, { recursive: true, force: true }));
   const caminhos = criarCaminhos({ empacotado: false, appPath: raiz, userData: path.join(base, 'dados') });
+  // A biblioteca embutida do projeto (snippets-oficiais) não entra nestes testes: aponta para uma pasta que não existe.
+  caminhos.snippetsEmbutidos = path.join(base, 'embutida');
   const fonte = path.join(base, 'fonte');
   fs.mkdirSync(caminhos.oficial, { recursive: true });
   escrever(fonte, arquivosFonte);
@@ -306,6 +308,87 @@ test('testarFonte conta os arquivos das subpastas e acusa caminho-profundo', asy
   const r = await testarFonte(a.fonte);
   assert.equal(r.arquivos, 4);
   assert.ok(r.erros.some((e) => e.regra === 'caminho-profundo'));
+});
+
+// ---------------------------------------------------------------------------
+// Snippets oficiais EMBUTIDOS no programa (sem pasta compartilhada configurada)
+// ---------------------------------------------------------------------------
+
+const EMBUTIDA = () => ({
+  'CDSP - Geral.yml': yml(bloco('/geral', 'Texto geral')),
+  'CDSP - Nomes da equipe.yml': yml(bloco('-fu', 'Fulano', 'Fulano de Tal da Silva '), bloco('\\\\triag', 'Triagem')),
+});
+
+test('sem pasta configurada, aplica a biblioteca embutida no programa', async (t) => {
+  const a = ambiente(t);
+  a.config.fonteSnippets = '';
+  escrever(a.caminhos.snippetsEmbutidos, EMBUTIDA());
+  const r = await a.sincronizador.sincronizar();
+  assert.equal(r.status, 'atualizado');
+  assert.equal(r.totalSnippets, 3);
+  assert.deepEqual(arquivosDe(a.caminhos.oficial), ['CDSP - Geral.yml', 'CDSP - Nomes da equipe.yml']);
+  assert.deepEqual(arquivosDe(a.caminhos.ultimaValida), ['CDSP - Geral.yml', 'CDSP - Nomes da equipe.yml']);
+  assert.equal(lerEstado(a.caminhos.estado).totalSnippets, 3);
+});
+
+test('a pasta compartilhada configurada tem precedência sobre a embutida (a opção pode voltar)', async (t) => {
+  const a = ambiente(t, { 'compartilhada.yml': yml(bloco('/cont', 'Da pasta compartilhada')) });
+  escrever(a.caminhos.snippetsEmbutidos, EMBUTIDA());
+  const r = await a.sincronizador.sincronizar();
+  assert.equal(r.status, 'atualizado');
+  assert.deepEqual(arquivosDe(a.caminhos.oficial), ['compartilhada.yml']);
+  // Esvaziar a configuração devolve a embutida.
+  a.config.fonteSnippets = '';
+  const volta = await a.sincronizador.sincronizar();
+  assert.equal(volta.status, 'atualizado');
+  assert.deepEqual(arquivosDe(a.caminhos.oficial), ['CDSP - Geral.yml', 'CDSP - Nomes da equipe.yml']);
+});
+
+test('sem pasta configurada e sem biblioteca embutida: não configurado (e nada é aplicado)', async (t) => {
+  const a = ambiente(t);
+  a.config.fonteSnippets = '';
+  assert.equal((await a.sincronizador.sincronizar()).status, 'nao-configurado');
+  assert.deepEqual(listar(a.caminhos.oficial), []);
+});
+
+test('biblioteca embutida: hash igual não reaplica; conteúdo novo (versão nova do programa) reaplica', async (t) => {
+  const a = ambiente(t);
+  a.config.fonteSnippets = '';
+  escrever(a.caminhos.snippetsEmbutidos, EMBUTIDA());
+  const primeira = await a.sincronizador.sincronizar();
+  const igual = await a.sincronizador.sincronizar();
+  assert.equal(igual.aplicadoEm, primeira.aplicadoEm);
+  // Uma versão nova do programa traz a pasta inteira de novo (os arquivos antigos que sumiram não ficam).
+  fs.rmSync(a.caminhos.snippetsEmbutidos, { recursive: true, force: true });
+  escrever(a.caminhos.snippetsEmbutidos, { 'CDSP - Geral.yml': yml(bloco('/geral', 'Texto geral'), bloco('/novo', 'Novo')) });
+  const nova = await a.sincronizador.sincronizar();
+  assert.notEqual(nova.aplicadoEm, primeira.aplicadoEm);
+  assert.equal(nova.totalSnippets, 2);
+});
+
+test('biblioteca embutida com erro não é aplicada e a versão anterior é mantida', async (t) => {
+  const a = ambiente(t);
+  a.config.fonteSnippets = '';
+  escrever(a.caminhos.snippetsEmbutidos, EMBUTIDA());
+  await a.sincronizador.sincronizar();
+  const antes = arquivosDe(a.caminhos.oficial);
+  escrever(a.caminhos.snippetsEmbutidos, { 'ruim.yml': yml(bloco('/cont'), bloco('/contestacao')) });
+  const r = await a.sincronizador.sincronizar();
+  assert.equal(r.status, 'erro-na-fonte');
+  assert.deepEqual(arquivosDe(a.caminhos.oficial), antes);
+});
+
+test('a biblioteca embutida de verdade (snippets-oficiais do projeto) é válida e é aplicada inteira', async (t) => {
+  const real = path.join(raiz, 'snippets-oficiais');
+  if (!fs.existsSync(real)) { t.skip('snippets-oficiais não existe neste computador (fica fora do git)'); return; }
+  const a = ambiente(t);
+  a.config.fonteSnippets = '';
+  a.caminhos.snippetsEmbutidos = real;
+  const r = await a.sincronizador.sincronizar();
+  assert.equal(r.status, 'atualizado', JSON.stringify(r.erros));
+  assert.deepEqual(r.erros, []);
+  assert.equal(r.totalSnippets, 148);
+  assert.equal(arquivosDe(a.caminhos.oficial).length, 12);
 });
 
 // ---------------------------------------------------------------------------

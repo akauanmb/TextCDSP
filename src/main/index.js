@@ -466,8 +466,11 @@ function iniciarAplicativo() {
     const jaDisponivel = atualizador.disponivel();
     if (jaDisponivel) bandeja.atualizarVersaoDisponivel(jaDisponivel.versao);
 
-    // Primeira execução: sem pasta configurada, abre as configurações.
-    if (!configuracao.fonteSnippets) janelaPrincipal.abrir('configuracoes');
+    // [PASTA-COMPARTILHADA-DESATIVADA] (27/11/2026) Na primeira execução, sem pasta configurada, as Configurações
+    // abriam sozinhas para a pessoa escolher a pasta. Os snippets oficiais agora vêm embutidos no programa e a opção
+    // de pasta saiu da interface, então não há o que configurar. Para reativar, descomente (e veja
+    // src/renderer/principal/configuracoes.js e index.html):
+    // if (!configuracao.fonteSnippets) janelaPrincipal.abrir('configuracoes');
 
     await exclusivo(arrancar);
     vigia = setInterval(() => vigiar().catch((erro) => log.erro('Falha na verificação periódica', erro)), INTERVALO_VIGIA_MS);

@@ -67,11 +67,21 @@ test('files: só src, assets, package.json e snippets/exemplos.yml', () => {
   }
 });
 
-test('extraResources: o motor vai para resources\\espanso e os avisos para resources\\', () => {
+test('extraResources: o motor vai para resources\\espanso, os avisos para resources\\ e os snippets oficiais para resources\\snippets-oficiais', () => {
   assert.deepEqual(build.extraResources, [
     { from: 'vendor/espanso', to: 'espanso' },
     { from: 'THIRD_PARTY_NOTICES.txt', to: 'THIRD_PARTY_NOTICES.txt' },
+    { from: 'snippets-oficiais', to: 'snippets-oficiais' },
   ]);
+});
+
+test('os snippets oficiais ficam fora do git, mas entram no instalador; o caminho aponta para onde o instalador os põe', () => {
+  const ignorados = lerTexto('.gitignore').split(/\r?\n/).map((l) => l.trim());
+  assert.ok(ignorados.includes('snippets-oficiais/'));
+  // Instalado: resources\snippets-oficiais, fora do app.asar (o motor e os avisos ficam no mesmo lugar).
+  assert.equal(criarCaminhos({ empacotado: true, resourcesPath: 'R', appPath: 'A', userData: 'U' }).snippetsEmbutidos, path.join('R', 'snippets-oficiais'));
+  assert.equal(criarCaminhos({ empacotado: false, appPath: 'A', userData: 'U' }).snippetsEmbutidos, path.join('A', 'snippets-oficiais'));
+  assert.ok(!criarCaminhos({ empacotado: true, resourcesPath: 'R', appPath: 'A', userData: 'U' }).snippetsEmbutidos.includes('app.asar'));
 });
 
 test('electron e electron-builder são só de desenvolvimento; yaml é a única dependência de execução', () => {

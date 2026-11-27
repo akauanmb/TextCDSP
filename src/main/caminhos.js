@@ -31,6 +31,10 @@ function criarCaminhos({ empacotado, resourcesPath, appPath, userData }) {
     origemVersao: path.join(origem, 'VERSAO.txt'),
     origemPortable: path.join(origem, 'espanso-portable'),
 
+    // Snippets oficiais EMBUTIDOS no programa (pasta snippets-oficiais\, gerada pelo scripts/converter-textblaze.js).
+    // É a fonte dos snippets oficiais quando não há pasta compartilhada configurada. Instalado: fora do app.asar.
+    snippetsEmbutidos: empacotado ? path.join(resourcesPath, 'snippets-oficiais') : path.join(appPath, 'snippets-oficiais'),
+
     // Dados do TextCDSP
     dados: userData,
     configJson: path.join(userData, 'config.json'),

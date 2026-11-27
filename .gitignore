@@ -3,3 +3,6 @@ vendor/
 dist/
 *.log
 .claude/settings.local.json
+
+# Textos oficiais da CDSP (nomes da equipe, roteiros internos, prompts): ficam fora do git; entram no instalador (extraResources).
+snippets-oficiais/

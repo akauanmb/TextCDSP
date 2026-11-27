@@ -170,7 +170,7 @@ test('criar /ola com texto de 3 linhas e acentos: grava, a Biblioteca lista e o 
 
 test('Marco 9: a lista entregue à janela traz os caracteres iniciais e o exemplo', async (t) => {
   const r = await carregarBiblioteca(ambiente(t).caminhos);
-  assert.deepEqual(r.prefixosTrigger, ['/', ';', '!', '#', '=', '+']);
+  assert.deepEqual(r.prefixosTrigger, ['/', ';', '!', '#', '=', '+', '-', '\\']);
   assert.equal(r.exemploAtalho, '/ola ou ;ola');
 });
 

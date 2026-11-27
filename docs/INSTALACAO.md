@@ -22,15 +22,11 @@ Passe o mouse sobre o ícone: deve aparecer **TextCDSP - ativo**.
 
 > Se já houver outro Espanso instalado no computador, o TextCDSP avisa e não inicia. Feche ou desinstale o outro Espanso e escolha **Retomar** no menu do ícone.
 
-## 2. Configurar a pasta de snippets (só na primeira vez)
+## 2. Os snippets já vêm no programa
 
-A janela do TextCDSP abre sozinha, já na seção **Configurações** (o menu lateral à esquerda). Se não abrir, clique com o botão direito no ícone da bandeja e escolha **Configurações...**.
+Não há nada para configurar. Os atalhos oficiais da CDSP (nomes da equipe, triagem, ofícios, medicamentos, fora do SUS e os demais) **vêm dentro do programa** e são aplicados sozinhos assim que ele abre. Em poucos segundos o menu do ícone mostra **Snippets atualizados** e a Biblioteca lista tudo, em pastas.
 
-1. Clique em **Escolher...** e selecione a pasta compartilhada com os snippets da CDSP (o setor informa qual é).
-2. Clique em **Testar**. Deve aparecer algo como "6 snippets, 0 erros".
-3. Clique em **Salvar**.
-
-Em poucos segundos o menu do ícone mostra **Snippets atualizados**. Depois disso, os snippets se atualizam sozinhos.
+Para ver quantos snippets estão em uso, abra **Configurações** e olhe a seção **Situação**. Os atalhos oficiais mudam quando o programa é atualizado (ver "Atualizar o programa"): você não precisa escolher pasta nenhuma.
 
 ## 3. Usar
 
@@ -78,22 +74,26 @@ Ao **minimizar** a janela (o botão da barra de título, o botão **Minimizar pa
 
 1. Abra a seção **Biblioteca** e clique em **Novo atalho pessoal**.
 2. Preencha:
-   - **Atalho:** por exemplo, `/ola` ou `;ola`. Começa com um destes caracteres: `/` `;` `!` `#` `=` `+`, seguido de 2 a 30 letras minúsculas (sem acento) ou números. Se você digitar só `ola`, o programa acrescenta o `/`.
+   - **Atalho:** por exemplo, `/ola` ou `;ola`. Começa com um destes caracteres: `/` `;` `!` `#` `=` `+` `-` `\`, seguido de 2 a 30 letras minúsculas (sem acento) ou números. Se você digitar só `ola`, o programa acrescenta o `/`.
    - **Nome:** como o atalho aparece na lista.
    - **Texto:** o que será inserido. Pode ter várias linhas.
 3. Clique em **Salvar**. Em poucos segundos o atalho já funciona.
 
-Outros caracteres, como `@`, `-`, `.`, `\` ou as teclas de acento (`´` `` ` `` `~` `^`), não podem abrir um atalho: o Google Docs e o teclado dão outro uso a eles. A janela recusa e mostra a lista dos permitidos.
+Outros caracteres, como `@`, `.` ou as teclas de acento (`´` `` ` `` `~` `^`), não podem abrir um atalho: o Google Docs e o teclado dão outro uso a eles. A janela recusa e mostra a lista dos permitidos.
+
+**Cuidado com o `-` e o `\`:** os atalhos antigos da equipe usam os dois (`-ot`, `\triag`), por isso eles são aceitos. Mas o `-` aparece no meio de palavras com hífen e o `\` em caminhos de arquivo, então um atalho como `-ale` pode disparar no meio de uma palavra (por exemplo, "extra-alegre"), e um `\` num caminho como `C:\pasta\ale` também. Se isso atrapalhar, troque o atalho.
 
 O atalho não pode ser igual ao início de outro atalho com o mesmo caractere inicial (por exemplo, `/ola` e `/olamundo`). Atalhos que começam por caracteres diferentes não se atrapalham: `/ola` e `;ola` podem existir juntos. O texto não pode conter `{{` nem `}}`. Se algo estiver errado, a janela avisa ao lado do campo.
 
-Se você escrever o atalho direto no arquivo `pessoal.yml`, ponha-o **sempre entre aspas** (`trigger: "!ola"`). Sem aspas, `!` e `#` quebram o arquivo.
+Se você escrever o atalho direto no arquivo `pessoal.yml`, ponha-o **sempre entre aspas** (`trigger: "!ola"`). Sem aspas, `!` e `#` quebram o arquivo. Para um atalho que começa com a barra invertida, use **aspas simples** (`trigger: '\ola'`) ou duas barras entre aspas duplas (`trigger: "\\ola"`): com uma só barra entre aspas duplas, o arquivo fica com erro.
 
 Para mudar ou apagar, selecione o atalho na lista e clique em **Editar** ou **Excluir**.
 
 ## 5. Atualizar o programa
 
-Quando houver uma versão nova na pasta de snippets, o TextCDSP avisa com uma notificação ("Nova versão do TextCDSP disponível"), uma única vez por versão. Ele nunca atualiza sozinho.
+**Por enquanto, atualize reinstalando.** O aviso de nova versão depende da pasta compartilhada de snippets, que está desativada (os snippets vêm no programa). Para atualizar, rode o instalador novo por cima do atual (ele fecha o TextCDSP, atualiza e abre de novo). Seus atalhos pessoais e as configurações são mantidos, e os snippets oficiais passam a ser os da versão nova.
+
+Quando a pasta compartilhada for reativada, valerá o que segue: quando houver uma versão nova na pasta de snippets, o TextCDSP avisa com uma notificação ("Nova versão do TextCDSP disponível"), uma única vez por versão. Ele nunca atualiza sozinho.
 
 Para atualizar, clique na notificação ou clique com o botão direito no ícone e escolha **Instalar versão X.Y.Z**. Confirme em **Instalar agora**. O TextCDSP fecha, a versão nova é instalada e ele abre de novo. Durante esse intervalo os atalhos ficam parados. Seus atalhos pessoais e as configurações são mantidos.
 
@@ -106,7 +106,9 @@ Se a notificação passar despercebida, o item **Instalar versão X.Y.Z** contin
 
 Seus atalhos pessoais ficam guardados no computador, na pasta `%APPDATA%\TextCDSP` (cole esse endereço na barra do Explorador de Arquivos para abrir). Para apagar tudo de vez, apague essa pasta depois de desinstalar.
 
-## Para quem administra a pasta compartilhada
+## Para quem administra a pasta compartilhada (desativado por enquanto)
+
+> **Esta seção só vale se a pasta compartilhada for reativada.** Hoje os snippets oficiais vêm embutidos no programa (pasta `snippets-oficiais` do projeto, gerada por `scripts/converter-textblaze.js`), e a Biblioteca mostra uma pasta para cada pasta antiga do Text Blaze. A opção de escolher uma pasta saiu das Configurações, e o código dela continua no projeto, comentado.
 
 A pasta de snippets pode ter **subpastas**, e a Biblioteca mostra a mesma organização, com pastas que abrem e fecham (cada pasta e cada arquivo mostram quantos snippets têm). Exemplo:
 

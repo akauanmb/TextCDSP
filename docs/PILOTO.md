@@ -8,8 +8,8 @@ Quem conduz o piloto (a pessoa que administra os snippets) preenche a seção 1.
 
 - [ ] **Escolher os participantes:** pessoas que usam o Google Docs todos os dias, de preferência com computadores diferentes (um deles com o Windows mais antigo do setor).
 - [ ] **Falar com a TI da PGE:** o instalador não é assinado digitalmente, e ferramentas que leem o teclado (como o Espanso) costumam exigir liberação no antivírus. Combine a liberação **antes** do piloto, para não confundir esse bloqueio com defeito do programa.
-- [ ] **Preparar uma pasta de snippets só para o piloto** (não a de produção), com os snippets reais mais usados. Rode `npm run validar -- <pasta>` e confira `0 erros`.
-- [ ] **Quem pode gravar na pasta:** dê permissão de escrita só a quem administra. A pasta também distribui o instalador (`_instalador`), e quem escreve nela pode fazer todos os computadores do piloto receberem um programa novo. Os participantes só precisam de leitura.
+- [ ] **Conferir os snippets embutidos:** eles vêm dentro do programa (pasta `snippets-oficiais`, gerada por `node scripts/converter-textblaze.js <arquivo.json>`). Rode `npm run validar -- snippets-oficiais` e confira `0 erros`. Essa pasta **não vai para o git** (tem nomes da equipe e textos internos): antes de `npm run dist`, ela precisa existir neste computador.
+- [ ] **Trocar um snippet durante o piloto** exige gerar e instalar um instalador novo (não há pasta compartilhada por enquanto). Combine como vai fazer isso.
 - [ ] **Gerar o instalador:** `npm run dist` e anote a versão e o tamanho de `dist\TextCDSP-Setup-<versao>.exe`.
 - [ ] **Entregar** o `.exe` e o `docs/INSTALACAO.md` aos participantes.
 - [ ] **Combinar como relatar problemas** (seção 8) e quando será a conversa final.
@@ -19,16 +19,18 @@ Quem conduz o piloto (a pessoa que administra os snippets) preenche a seção 1.
 - [ ] A instalação terminou sem pedir senha de administrador.
 - [ ] Apareceu o aviso azul do Windows (SmartScreen)? Anote. O texto do `INSTALACAO.md` foi suficiente para a pessoa seguir sozinha?
 - [ ] O antivírus bloqueou ou avisou de algo? Anote o nome do programa e a mensagem.
-- [ ] O ícone **TC** apareceu na bandeja (talvez dentro do "^")?
+- [ ] O ícone do TextCDSP (o escudo azul) apareceu na bandeja (talvez dentro do "^")?
 - [ ] O programa tem o Espanso já instalado no computador? Se sim, apareceu o aviso de "Já existe um Espanso em execução"? Ficou claro o que fazer?
 - [ ] Tempo total da instalação: ______ minutos.
 
-## 3. Primeira configuração
+## 3. Primeira execução
 
-- [ ] A janela do TextCDSP abriu sozinha, na seção **Configurações**.
-- [ ] A pessoa conseguiu escolher a pasta de snippets sem ajuda.
-- [ ] O botão **Testar** mostrou o número certo de snippets e `0 erros`.
-- [ ] Depois de **Salvar**, o menu do ícone mostrou "Snippets atualizados".
+Não há mais pasta para configurar: os snippets vêm no programa.
+
+- [ ] Em poucos segundos, o menu do ícone mostrou "Snippets atualizados".
+- [ ] Ao dar dois cliques no ícone, a Biblioteca mostrou as 12 pastas (Nomes da equipe, Triagem jurídica, Fora do SUS...) e **148 snippets** no rodapé.
+- [ ] Os atalhos mais usados funcionam (por exemplo, o nome de um colega com `-` e um da triagem com a barra invertida).
+- [ ] Algum atalho com `-` ou `\` disparou sem querer no meio de uma palavra ou de um caminho de arquivo? Anote qual e onde.
 - [ ] O programa abriu sozinho depois de reiniciar o Windows.
 
 ## 4. Uso no Google Docs
@@ -48,40 +50,33 @@ Use durante a semana de trabalho normal, não só em testes.
 
 ## 5. Comportamento offline
 
-- [ ] Desconectar da rede (ou do Google Drive para computador) e continuar usando os atalhos: tudo segue funcionando.
-- [ ] O menu do ícone mostra "Sem conexão com a pasta, usando versão de dd/mm hh:mm".
-- [ ] Ao reconectar, o menu volta a "Snippets atualizados" em até o intervalo de sincronização.
-- [ ] Reiniciar o computador **sem rede** e usar os atalhos: continuam funcionando (vêm da última versão válida guardada).
+Os snippets oficiais estão dentro do programa, então não dependem de rede nem de pasta.
+
+- [ ] Desconectar da rede e continuar usando os atalhos: tudo segue funcionando.
+- [ ] Reiniciar o computador **sem rede** e usar os atalhos: continuam funcionando.
 
 ## 6. Atualização dos snippets
 
-Quem conduz altera a pasta de snippets e cada participante confere.
+Os snippets oficiais mudam junto com o programa: quem conduz gera um instalador novo e cada participante instala por cima. (Reativar a pasta compartilhada traria de volta a atualização sem reinstalar: o código está no projeto, comentado.)
 
-- [ ] Adicionar um snippet novo: aparece na Biblioteca e funciona dentro do intervalo de sincronização (ou na hora, com **Atualizar snippets**).
-- [ ] Alterar o texto de um snippet existente: o texto novo é usado.
-- [ ] Apagar um snippet: ele deixa de funcionar.
-- [ ] **Erro de propósito** (por exemplo, dois atalhos em que um começa com o outro, como `/cont` e `/contestacao`): chegou uma notificação de erro, os atalhos continuaram funcionando com a versão anterior e a seção Configurações mostra o erro. Corrija na pasta e confirme que volta ao normal.
+- [ ] Depois de instalar a versão nova, a Biblioteca mostra o snippet novo, o texto alterado e não mostra o apagado.
+- [ ] O menu do ícone mostra "Snippets atualizados" e a data nova.
 - [ ] O atalho pessoal de cada participante continuou intacto depois de todas as atualizações.
 
 ## 7. Atualização do programa
 
-Para testar, quem conduz publica uma versão nova **durante o piloto**.
+**Por enquanto, sem aviso automático.** O aviso de nova versão (notificação e "Instalar versão X.Y.Z" no menu) lê a pasta compartilhada de snippets, que está desativada. O código continua no projeto e volta a funcionar quando a pasta for reativada (`npm run publicar -- <pasta>`).
 
-**Como publicar (quem conduz):**
+Para testar a atualização agora, quem conduz gera um instalador de versão maior e cada participante o instala por cima:
 
-1. Aumente a `version` do `package.json` (por exemplo, de `0.1.0` para `0.1.1`).
-2. `npm run dist`
-3. `npm run publicar -- <pasta de snippets do piloto>` e escreva as notas da versão (uma linha).
+1. Aumente a `version` do `package.json` (por exemplo, de `0.2.0` para `0.2.1`).
+2. `npm run dist` e entregue o `.exe`.
 
 **O que conferir (participantes):**
 
-- [ ] Em até o intervalo de sincronização, chegou a notificação "Nova versão do TextCDSP disponível" **uma única vez**. Mesmo reiniciando o programa, ela não volta.
-- [ ] O menu do ícone mostra **Instalar versão X.Y.Z**.
-- [ ] Ao clicar, o texto de confirmação mostra as notas da versão.
-- [ ] Depois de **Instalar agora**, o programa fecha, instala e abre sozinho, sem erro de "arquivo em uso" e sem pedir administrador.
-- [ ] Os atalhos pessoais, a pasta configurada e o início com o Windows continuaram como estavam.
-- [ ] O item **Instalar versão** sumiu do menu e **Sobre o TextCDSP** mostra a versão nova.
-- [ ] Quem estava com a pasta **offline** no momento da publicação recebeu o aviso quando a conexão voltou.
+- [ ] O instalador fecha o programa, atualiza e abre sozinho, sem erro de "arquivo em uso" e sem pedir administrador.
+- [ ] Os atalhos pessoais, as configurações e o início com o Windows continuaram como estavam.
+- [ ] **Sobre o TextCDSP** mostra a versão nova.
 
 ## 8. Onde estão os logs e o que coletar em caso de problema
 

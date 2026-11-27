@@ -9,8 +9,11 @@ const { parseDocument, LineCounter, isMap, isSeq, isScalar } = require('yaml');
 // Caracteres com que um atalho pode começar (Marco 9). É a ÚNICA lista: nenhum outro módulo repete estes
 // caracteres; quem precisar deles (mensagens, ajuda da janela) importa daqui ou recebe por parâmetro.
 // Ficam de fora de propósito: letras, números, espaço, teclas mortas do teclado (´ ` ~ ^ ¨ ' "), caracteres
-// comuns em palavras e endereços (- . , : _ & ? %), "@" (menu de menções do Google Docs), "\" e "*".
-const PREFIXOS_TRIGGER = Object.freeze(['/', ';', '!', '#', '=', '+']);
+// comuns em palavras e endereços (. , : _ & ? %), "@" (menu de menções do Google Docs) e "*".
+// "-" e "\" entraram em 27/11/2026, a pedido: os atalhos antigos do Text Blaze (112 de 148) começam por eles e a
+// equipe os digita todo dia. Riscos conhecidos: o "-" aparece no meio de palavras (ex.: médico-legal) e o "\" em
+// caminhos de arquivo, então um atalho como -ale pode disparar no meio de uma palavra com hífen (docs/PLANO.md).
+const PREFIXOS_TRIGGER = Object.freeze(['/', ';', '!', '#', '=', '+', '-', '\\']);
 const TEXTO_PREFIXOS_TRIGGER = PREFIXOS_TRIGGER.join(' ');
 // Explica o formato nas mensagens de erro (validador e formulário de atalho pessoal).
 const TEXTO_FORMATO_TRIGGER = `comece com um destes caracteres: ${TEXTO_PREFIXOS_TRIGGER}, seguido de 2 a 30 letras minúsculas sem acento ou números`;

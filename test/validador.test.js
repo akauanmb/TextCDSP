@@ -18,7 +18,7 @@ const doRegra = (lista, regra) => lista.filter((p) => p.regra === regra);
 
 // Um match mínimo válido; `extra` entra depois da saída.
 const match = (trigger, extra = '', label = 'Rótulo') =>
-  `  - trigger: "${trigger}"\n    label: "${label}"\n    replace: "texto"\n${extra}`;
+  `  - trigger: ${JSON.stringify(trigger)}\n    label: "${label}"\n    replace: "texto"\n${extra}`;
 const lista = (...matches) => `matches:\n${matches.join('')}`;
 const valida = (conteudo, opcoes) => validarBiblioteca([arq(conteudo)], opcoes);
 
@@ -160,7 +160,7 @@ test('trigger-formato: padrões válidos', () => {
 // Marco 9: o atalho pode começar por qualquer caractere de PREFIXOS_TRIGGER.
 
 test('PREFIXOS_TRIGGER: a lista fixa de caracteres iniciais', () => {
-  assert.deepEqual([...PREFIXOS_TRIGGER], ['/', ';', '!', '#', '=', '+']);
+  assert.deepEqual([...PREFIXOS_TRIGGER], ['/', ';', '!', '#', '=', '+', '-', '\\']);
   assert.ok(Object.isFrozen(PREFIXOS_TRIGGER));
 });
 
@@ -182,7 +182,6 @@ test('trigger-formato: sem caractere inicial da lista, ou com outro caractere, �
     'número': '1cont',
     'espaço': ' cont',
     '@': '@cont',
-    '-': '-cont',
     '.': '.cont',
     'acento agudo': '´cont',
     'til': '~cont',

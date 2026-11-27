@@ -356,6 +356,30 @@ O app grava o atalho pessoal sempre entre aspas duplas, então o problema só ex
 
 **Para confirmar no teste manual (Google Docs e Bloco de Notas):** criar `;ola`, `!ola`, `#ola`, `=ola` e `+ola` pela Biblioteca e digitar cada um. O que não expandir sai de `PREFIXOS_TRIGGER` e é registrado aqui.
 
+**Atualização de 27/11/2026: `-` e `\` também.** Os atalhos antigos do Text Blaze (112 de 148) começam por `-` (nomes da equipe) e `\` (triagem, ofícios...), e os dois entraram em `PREFIXOS_TRIGGER`. **VERIFICADO** na mesma cópia do motor: `match list -j` devolveu `-ola`, `\ola` e `\dois` (o JSON mostra a barra como `\\`), escritos nos três jeitos que o YAML aceita (`"-ola"`, `'\ola'` e `"\\dois"`). **NÃO VERIFICADO:** que expandem ao digitar, e o efeito do `-` no meio de palavras com hífen e do `\` em caminhos de arquivo (os riscos que levaram a deixá-los de fora da lista no Marco 9). No YAML escrito à mão, `"\ola"` (UMA barra entre aspas duplas) é **erro de YAML**; use aspas simples ou duas barras.
+
+---
+
+## P12. Um bloco literal cujo texto começa por TAB derruba o arquivo inteiro
+
+**Resposta (VERIFICADO):** o leitor de YAML do Espanso interpreta de outro jeito, e **descarta o arquivo inteiro**, um bloco literal (`|`) cuja primeira linha de texto começa por TAB, quando a linha seguinte começa por espaço. A biblioteca `yaml` do projeto (e o validador) leem esse mesmo arquivo sem problema, então **o validador não detecta**, e o Espanso não avisa (P9).
+
+**Como apareceu:** os 148 snippets convertidos do Text Blaze passaram no validador com 0 erros e 0 avisos, mas `espansod.exe match list -j` devolveu **138**. Os 10 que faltavam eram todos os snippets de **dois arquivos inteiros**. Isolando cada snippet, só 3 quebravam (`\textrepet`, `\cbaf` e `/pedmed`), mas um erro derruba os outros do mesmo arquivo. Bisseção do `\cbaf`: o texto da opção "Incluir" tem como 1ª linha `<TAB>texto...` e como 2ª linha ` texto...` (um espaço no começo).
+
+| Caso, num bloco literal | Espanso |
+|---|---|
+| 1ª linha começa por TAB, 2ª linha começa por espaço | **Descarta o arquivo inteiro** |
+| O mesmo texto entre aspas duplas (`"...\n..."`) | Carrega |
+| TAB no começo da 2ª linha; linha só com TAB; TAB no meio da linha; linha mais recuada; TAB e espaços misturados; 1ª linha com espaço e indicador de recuo (`|2`) | Carregam (nove casos mínimos) |
+
+**Consequências:**
+
+- O conversor do Text Blaze (`scripts/converter-textblaze.js`) usa bloco literal **só** para texto que não começa por espaço em branco; os outros vão entre aspas duplas.
+- **A conferência confiável é contar:** depois de gerar ou editar os snippets oficiais, `espansod.exe match list -t` numa cópia do motor (ver o roteiro abaixo) deve listar **o mesmo número** de atalhos do validador. Número menor = algum arquivo foi descartado.
+- Quem editar à mão um YAML oficial deve evitar começar um bloco literal por TAB ou por espaço.
+
+**Outro defeito, da biblioteca `yaml` (não do Espanso):** um texto com uma linha só de espaço (`" \n "`) escrito entre aspas duplas com dobra de linha volta, ao reler, com uma barra de verdade no lugar da linha. O conversor usa `doubleQuotedAsJSON` para evitar, e confere por ida e volta cada arquivo antes de gravar.
+
 ---
 
 ## Roteiro de teste manual (a partir do zero)

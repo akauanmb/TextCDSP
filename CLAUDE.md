@@ -15,7 +15,9 @@ Leia este arquivo inteiro antes de qualquer tarefa. Se a tarefa contradisser alg
   - Controla o motor, sincroniza snippets e abre as janelas.
 - **Instalador:** electron-builder, alvo NSIS, por usuário e sem administrador.
 - **Snippets:** arquivos YAML no formato do Espanso.
-  - Os snippets oficiais vêm de uma pasta-fonte compartilhada, com subpastas de até 3 níveis (a Biblioteca as mostra como árvore). Pastas e arquivos iniciados por `_` (e pastas iniciadas por `.`) são ignorados.
+  - Os snippets oficiais vêm **embutidos no programa**: a pasta `snippets-oficiais/` (um arquivo YAML por pasta antiga do Text Blaze, gerada por `scripts/converter-textblaze.js`) vai no instalador e é aplicada pela sincronização. Essa pasta **fica fora do git** (tem nomes da equipe e textos internos).
+  - A pasta-fonte compartilhada (com subpastas de até 3 níveis; pastas e arquivos iniciados por `_` e pastas iniciadas por `.` são ignorados) está **desativada na interface**: o código continua, comentado e marcado com `[PASTA-COMPARTILHADA-DESATIVADA]`, para o caso de a escolha ser revogada. Se um dia ela for configurada, tem precedência sobre a embutida.
+  - Atalhos começam por um destes caracteres: `/ ; ! # = + - \` (lista única `PREFIXOS_TRIGGER`, em `src/shared/validador.js`).
   - Os pessoais ficam em `pessoal.yml`. Só o próprio usuário altera esse arquivo, à mão ou pela seção Biblioteca da janela principal (texto simples). A sincronização e as atualizações do app nunca o sobrescrevem.
 
 ## Estrutura de pastas
@@ -24,7 +26,8 @@ Leia este arquivo inteiro antes de qualquer tarefa. Se a tarefa contradisser alg
 CLAUDE.md, package.json, espanso.lock.json, .gitignore
 docs/            PLANO.md, ESPANSO-NOTAS.md, WINDOWS-NOTAS.md, INSTALACAO.md, PILOTO.md
 scripts/         scripts de desenvolvimento (baixar-espanso.js, validar.js, publicar.js)
-snippets/        exemplos e biblioteca inicial (YAML do Espanso)
+snippets/        exemplos de teste (YAML do Espanso)
+snippets-oficiais/  (gitignored) snippets oficiais embutidos no programa, gerados do Text Blaze
 src/main/        processo principal do Electron (um módulo por responsabilidade)
 src/shared/      código puro, sem Electron e sem acesso a disco (ex.: validador.js)
 src/renderer/    janelas (HTML/CSS/JS puro), uma subpasta por janela
@@ -64,6 +67,7 @@ dist/            (gitignored) saída do build
 - `npm test`: testes.
 - `npm run validar -- <pasta>`: valida uma pasta de snippets.
 - `npm run baixar-espanso`: baixa o motor para `vendor/`.
+- `node scripts/converter-textblaze.js <arquivo.json> [pasta]`: converte uma exportação do Text Blaze em `snippets-oficiais/` (um arquivo por pasta) e valida o resultado. Depois, confira no Espanso real que `match list -t` traz o mesmo número de atalhos (docs/ESPANSO-NOTAS.md, P12).
 - `npx electron scripts/gerar-icone.js`: refaz `assets/icone.ico` a partir de `assets/icon16.png`, `icon48.png` e `icon128.png` (o ícone do programa).
 - `npm run publicar -- <pasta-fonte>`: copia o instalador de `dist/` para `<pasta-fonte>\_instalador\` e grava o `versao.json`.
 - `npm start`: abre o app em modo desenvolvimento.

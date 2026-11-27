@@ -14,7 +14,11 @@ const ler = (...partes) => fs.readFileSync(path.join(raiz, ...partes), 'utf8');
 const caminhos = criarCaminhos({ empacotado: false, appPath: raiz, userData: path.join(raiz, 'dados-falsos') });
 const renderer = (...partes) => path.join(raiz, 'src', 'renderer', ...partes);
 
-const htmlPrincipal = ler('src', 'renderer', 'principal', 'index.html');
+// Só o código ATIVO: o que está comentado (como a opção de pasta compartilhada, desativada em 27/11/2026) não conta.
+const semComentariosJs = (texto) => texto.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const semComentariosHtml = (texto) => texto.replace(/<!--[\s\S]*?-->/g, '');
+const htmlPrincipalCru = ler('src', 'renderer', 'principal', 'index.html');
+const htmlPrincipal = semComentariosHtml(htmlPrincipalCru);
 const scriptsDaPagina = ['comum.js', 'biblioteca.js', 'configuracoes.js', 'principal.js'];
 
 // ---------------------------------------------------------------------------
@@ -62,7 +66,7 @@ test('a página do ícone carrega só arquivos que existem', () => {
 // ---------------------------------------------------------------------------
 
 const idsDoHtml = [...htmlPrincipal.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
-const idsCriadosPelosScripts = (nome) => [...ler('src', 'renderer', 'principal', nome).matchAll(/\bid: '([^']+)'/g)].map((m) => m[1]);
+const idsCriadosPelosScripts = (nome) => [...semComentariosJs(ler('src', 'renderer', 'principal', nome)).matchAll(/\bid: '([^']+)'/g)].map((m) => m[1]);
 
 test('ids do HTML: sem repetição', () => {
   assert.deepEqual(idsDoHtml.filter((id, i) => idsDoHtml.indexOf(id) !== i), []);
@@ -79,7 +83,7 @@ test('ids: nenhum id criado por script repete um id do HTML (as duas seções vi
 test('ids: tudo que os scripts buscam com $("id") existe no HTML ou é criado por algum script', () => {
   const criados = scriptsDaPagina.flatMap(idsCriadosPelosScripts);
   for (const nome of scriptsDaPagina) {
-    const codigo = ler('src', 'renderer', 'principal', nome);
+    const codigo = semComentariosJs(ler('src', 'renderer', 'principal', nome));
     for (const [, id] of codigo.matchAll(/\$\('([^']+)'\)/g)) {
       assert.ok(idsDoHtml.includes(id) || criados.includes(id), `${nome}: $('${id}')`);
     }
@@ -211,4 +215,70 @@ test('as páginas têm Content-Security-Policy e nenhuma carrega conteúdo remot
       assert.doesNotMatch(fs.readFileSync(path.join(pasta, nome), 'utf8'), /https?:\/\//, nome);
     }
   }
+});
+
+// ---------------------------------------------------------------------------
+// Pasta compartilhada: desativada na interface, código mantido (27/11/2026)
+// ---------------------------------------------------------------------------
+
+const TAG = '[PASTA-COMPARTILHADA-DESATIVADA]';
+const jsConfiguracoes = ler('src', 'renderer', 'principal', 'configuracoes.js');
+
+test('pasta compartilhada: a opção NÃO aparece na interface (nenhum dos elementos está no HTML ativo)', () => {
+  for (const id of ['fonte', 'escolher', 'testar', 'resultado-teste', 'titulo-pasta']) {
+    assert.ok(!idsDoHtml.includes(id), `#${id} ainda está ativo no HTML`);
+  }
+  assert.doesNotMatch(htmlPrincipal, /Pasta de snippets oficiais|Escolher\.\.\.|Testar/);
+  // O resto das Configurações continua: opções, salvar e situação.
+  for (const id of ['intervalo', 'iniciar-windows', 'minimizar-icone', 'modo-admin', 'config-salvar', 'sincronizar', 'status-texto']) {
+    assert.ok(idsDoHtml.includes(id), id);
+  }
+});
+
+test('pasta compartilhada: o cartão continua no HTML, só comentado e marcado (para reativar depois)', () => {
+  assert.ok(htmlPrincipalCru.includes(TAG));
+  const comentarios = [...htmlPrincipalCru.matchAll(/<!--([\s\S]*?)-->/g)].map((m) => m[1]);
+  const doCartao = comentarios.find((c) => c.includes(TAG));
+  assert.ok(doCartao, 'um comentário HTML com a marca');
+  for (const trecho of ['id="fonte"', 'id="escolher"', 'id="testar"', 'id="resultado-teste"', 'Pasta de snippets oficiais', 'aria-labelledby="titulo-pasta"']) {
+    assert.ok(doCartao.includes(trecho), trecho);
+  }
+});
+
+test('pasta compartilhada: o código da página não a usa mais, mas o código dela continua lá, comentado e marcado', () => {
+  const ativo = semComentariosJs(jsConfiguracoes);
+  for (const usado of ["$('fonte')", "$('escolher')", "$('testar')", 'escolherFonte', 'testarFonte', 'fonteSnippets', 'mostrarTeste', 'resultado-teste']) {
+    assert.ok(!ativo.includes(usado), `"${usado}" ainda está no código ativo`);
+  }
+  // Tudo que foi desativado continua no arquivo, para o caso de a escolha ser revogada.
+  for (const guardado of ["fonte: $('fonte')", "escolher: $('escolher')", "testar: $('testar')", 'api.escolherFonte()', 'api.testarFonte(', 'fonteSnippets: campos.fonte.value', 'function mostrarTeste(', "campos.fonte.value = config.fonteSnippets"]) {
+    assert.ok(jsConfiguracoes.includes(guardado), `"${guardado}" foi apagado em vez de comentado`);
+  }
+  assert.ok((jsConfiguracoes.match(/\[PASTA-COMPARTILHADA-DESATIVADA\]/g) || []).length >= 6);
+});
+
+test('pasta compartilhada: salvar as Configurações não manda mais a pasta, e a pasta já configurada não é apagada', () => {
+  const ativo = semComentariosJs(jsConfiguracoes);
+  const salvar = ativo.slice(ativo.indexOf('api.salvarConfig({'), ativo.indexOf('});', ativo.indexOf('api.salvarConfig({')));
+  assert.ok(!salvar.includes('fonteSnippets'));
+  for (const chave of ['intervaloSyncMin', 'iniciarComWindows', 'minimizarParaIcone', 'modoAdmin']) assert.ok(salvar.includes(chave), chave);
+});
+
+test('pasta compartilhada: a lógica de fundo continua ativa (canais IPC, preload, sincronização e config)', () => {
+  assert.match(ler('src', 'main', 'janelaPrincipal.js'), /ipcMain\.handle\('fonte:escolher'/);
+  assert.match(ler('src', 'main', 'janelaPrincipal.js'), /ipcMain\.handle\('fonte:testar'/);
+  assert.match(ler('src', 'preload', 'principal.js'), /escolherFonte: \(\) => ipcRenderer\.invoke\('fonte:escolher'\)/);
+  assert.match(ler('src', 'preload', 'principal.js'), /testarFonte: \(pasta\) => ipcRenderer\.invoke\('fonte:testar', pasta\)/);
+  assert.match(ler('src', 'main', 'sincronizacao.js'), /const configurada = String\(obterConfig\(\)\.fonteSnippets/);
+  assert.match(ler('src', 'main', 'config.js'), /fonteSnippets: ''/);
+});
+
+test('pasta compartilhada: a primeira execução não abre mais as Configurações; o código está comentado e marcado', () => {
+  const index = ler('src', 'main', 'index.js');
+  assert.ok(index.includes(TAG));
+  const ativo = semComentariosJs(index);
+  assert.doesNotMatch(ativo, /if \(!configuracao\.fonteSnippets\)/);
+  assert.match(index, /\/\/ if \(!configuracao\.fonteSnippets\) janelaPrincipal\.abrir\('configuracoes'\);/);
+  // A notificação de erro na fonte ainda leva às Configurações (a Situação mostra os erros).
+  assert.match(ativo, /notificacao\.on\('click', \(\) => janelaPrincipal\.abrir\('configuracoes'\)\)/);
 });

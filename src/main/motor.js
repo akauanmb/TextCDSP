@@ -44,6 +44,8 @@ const PESSOAL_INICIAL = [
   `#   - O atalho começa com um destes caracteres: ${TEXTO_PREFIXOS_TRIGGER}`,
   `#     e tem de 2 a 30 letras minúsculas ou números (ex.: ${exemplosDeAtalho('ola')}).`,
   '#   - Escreva o atalho sempre entre aspas: sem elas, "#" e "!" não funcionam no arquivo.',
+  "#   - Atalho que começa com a barra invertida: use aspas simples ('\\ola') ou duas barras (\"\\\\ola\").",
+  '#     Com UMA barra entre aspas duplas ("\\ola") o arquivo fica com erro.',
   '#   - Não use um atalho que seja o começo de outro (ex.: /ola e /olamundo).',
   '#   - Indente só com espaços, nunca com tab.',
   '#   - Depois de salvar, o atalho passa a valer em poucos segundos.',

@@ -2,20 +2,29 @@
 
 // Seção Configurações da janela principal. Só fala com o processo principal pelo objeto
 // window.textcdsp (preload). Todo texto vindo de fora entra na página por textContent.
+//
+// [PASTA-COMPARTILHADA-DESATIVADA] (27/11/2026) A opção de conectar o programa a uma pasta compartilhada de snippets saiu da interface por
+// enquanto: os snippets oficiais agora vêm embutidos no programa (pasta snippets-oficiais). O código dessa opção
+// continua aqui, comentado, para o caso de a escolha ser revogada. Para reativar: procure por [PASTA-COMPARTILHADA-DESATIVADA]
+// neste arquivo, em index.html (o cartão "Pasta de snippets oficiais") e em src/main/index.js (a abertura das
+// Configurações na primeira execução), e descomente. Os canais fonte:escolher e fonte:testar e a lógica da pasta
+// em src/main/sincronizacao.js continuam ativos.
 
 (function () {
   const { api, $, aoEstado } = window.CDSPComum;
 
   const campos = {
-    fonte: $('fonte'),
+    // [PASTA-COMPARTILHADA-DESATIVADA]
+    // fonte: $('fonte'),
     intervalo: $('intervalo'),
     iniciarWindows: $('iniciar-windows'),
     minimizarIcone: $('minimizar-icone'),
     modoAdmin: $('modo-admin'),
   };
   const botoes = {
-    escolher: $('escolher'),
-    testar: $('testar'),
+    // [PASTA-COMPARTILHADA-DESATIVADA]
+    // escolher: $('escolher'),
+    // testar: $('testar'),
     salvar: $('config-salvar'),
     fechar: $('fechar'),
     sincronizar: $('sincronizar'),
@@ -89,6 +98,8 @@
     preencherLista($('lista-avisos'), $('titulo-avisos'), avisos, 'Avisos');
   }
 
+  /* [PASTA-COMPARTILHADA-DESATIVADA] Resultado do botão "Testar" (mostrava quantos snippets, erros e avisos a pasta tinha).
+
   function mostrarTeste(resultado) {
     const caixa = $('resultado-teste');
     caixa.hidden = false;
@@ -122,14 +133,18 @@
     }
     if (lista.children.length > 0) caixa.append(lista);
   }
+  */
 
   function preencherCampos(config) {
-    campos.fonte.value = config.fonteSnippets || '';
+    // [PASTA-COMPARTILHADA-DESATIVADA]
+    // campos.fonte.value = config.fonteSnippets || '';
     campos.intervalo.value = config.intervaloSyncMin;
     campos.iniciarWindows.checked = Boolean(config.iniciarComWindows);
     campos.minimizarIcone.checked = config.minimizarParaIcone !== false;
     campos.modoAdmin.checked = Boolean(config.modoAdmin);
   }
+
+  /* [PASTA-COMPARTILHADA-DESATIVADA] Botões "Escolher..." e "Testar" da pasta de snippets.
 
   botoes.escolher.addEventListener('click', () =>
     comOcupado(botoes.escolher, 'Escolhendo...', async () => {
@@ -147,12 +162,14 @@
       mostrarTeste(await api.testarFonte(campos.fonte.value));
     }),
   );
+  */
 
   botoes.salvar.addEventListener('click', () =>
     comOcupado(botoes.salvar, 'Salvando...', async () => {
       definirMensagem('');
       const resposta = await api.salvarConfig({
-        fonteSnippets: campos.fonte.value,
+        // [PASTA-COMPARTILHADA-DESATIVADA]
+        // fonteSnippets: campos.fonte.value,
         intervaloSyncMin: campos.intervalo.value,
         iniciarComWindows: campos.iniciarWindows.checked,
         minimizarParaIcone: campos.minimizarIcone.checked,

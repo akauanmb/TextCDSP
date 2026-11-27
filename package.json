@@ -42,6 +42,10 @@
       {
         "from": "THIRD_PARTY_NOTICES.txt",
         "to": "THIRD_PARTY_NOTICES.txt"
+      },
+      {
+        "from": "snippets-oficiais",
+        "to": "snippets-oficiais"
       }
     ],
     "win": {

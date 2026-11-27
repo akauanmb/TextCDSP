@@ -294,7 +294,11 @@ function criarSincronizador({ caminhos, log, obterConfig, aoErroNovo = () => {},
   }
 
   async function executar() {
-    const fonte = String(obterConfig().fonteSnippets || '').trim();
+    // A pasta compartilhada configurada, se houver, tem precedência. Sem ela, a fonte é a biblioteca EMBUTIDA no
+    // programa (a opção de escolher uma pasta está desativada na interface por enquanto, mas a lógica continua aqui).
+    const configurada = String(obterConfig().fonteSnippets || '').trim();
+    const embutida = !configurada && caminhos.snippetsEmbutidos && fs.existsSync(caminhos.snippetsEmbutidos) ? caminhos.snippetsEmbutidos : '';
+    const fonte = configurada || embutida;
     const estado = lerEstado(caminhos.estado);
     const aplicado = { aplicadoEm: estado ? estado.aplicadoEm || null : null, totalSnippets: estado ? estado.totalSnippets || 0 : 0 };
     const avisosAplicados = estado && Array.isArray(estado.avisos) ? estado.avisos : [];
